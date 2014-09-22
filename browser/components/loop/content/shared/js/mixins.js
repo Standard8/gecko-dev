@@ -87,9 +87,47 @@ loop.shared.mixins = (function() {
     }
   };
 
+  var StoreListeningMixin = {
+    saveStoreAttributes: function(name, attributeNames, attributes) {
+      var newState = {};
+      // Only save attributes we're interested in.
+      newState[name] = _.pick(attributes, attributeNames);
+      this.setState(newState);
+    },
+
+    componentWillMount: function() {
+      Object.keys(this.storeWatchAttributes).forEach(function(storeName) {
+        this.saveStoreAttributes(storeName,
+                                 this.storeWatchAttributes[storeName],
+                                 this.props[storeName].attributes);
+
+        this.listenTo(this.props[storeName], "change", this.setStoreState);
+      }.bind(this));
+    },
+
+    componentWillUnmount: function() {
+      Object.keys(this.storeWatchAttributes).forEach(function(storeName) {
+        this.stopListening(this.props[storeName], "change", this.setStoreState);
+      }.bind(this));
+    },
+
+    setStoreState: function(model) {
+      Object.keys(this.storeWatchAttributes).forEach(function(storeName) {
+        // The isMounted check is required because sometimes backbone doesn't
+        // cancel pending updates when we tell it to stopListening.
+        if (model === this.props[storeName] && this.isMounted()) {
+          this.saveStoreAttributes(storeName,
+                                   this.storeWatchAttributes[storeName],
+                                   model.attributes);
+        }
+      }.bind(this));
+    }
+  };
+
   return {
     setRootObject: setRootObject,
     DropdownMenuMixin: DropdownMenuMixin,
-    DocumentVisibilityMixin: DocumentVisibilityMixin
+    DocumentVisibilityMixin: DocumentVisibilityMixin,
+    StoreListeningMixin: StoreListeningMixin
   };
 })();

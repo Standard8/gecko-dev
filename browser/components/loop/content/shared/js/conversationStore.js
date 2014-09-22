@@ -77,6 +77,7 @@ loop.ConversationStore = (function() {
           // XXX
         }
 
+        // XXX This causes two lots of updates, might want to consider optimising.
         this._setOutgoingData(sessionData);
         this.set({callStatus: "pending"});
       }.bind(this));

@@ -11,6 +11,12 @@ var loop = loop || {};
 loop.conversationViews = (function(mozL10n) {
 
   var StartConversationView = React.createClass({displayName: 'StartConversationView',
+    mixins: [loop.shared.mixins.StoreListeningMixin, Backbone.Events],
+
+    storeWatchAttributes: {
+      "conversationStore": [ "urlCreationDateString" ],
+    },
+
     propTypes: {
       conversationStore: React.PropTypes.instanceOf(
         loop.ConversationStore).isRequired,
@@ -18,29 +24,11 @@ loop.conversationViews = (function(mozL10n) {
         loop.Dispatcher).isRequired
     },
 
-    componentWillMount: function() {
-      this.setState({
-        conversationState: this.props.conversationStore.attributes
-      });
-      // Explicit listening for specific events
-      this.props.conversationStore.on("change:urlCreationDateString", this.setStoreState, this);
-    },
-
-    componentDidUnmount: function() {
-      this.props.conversationStore.off(null, null, this);
-    },
-
-    setStoreState: function(model) {
-      this.setState({
-        conversationState: model.attributes
-      });
-    },
-
     render: function() {
       // XXX This view is really a shorted hack of the previous
       // one, just to show what we're dealing with.
 
-      var callUrlCreationDateString = this.state.conversationState.urlCreationDateString;
+      var callUrlCreationDateString = this.state.conversationStore.urlCreationDateString;
 
       var fromDateString = mozL10n.get("call_url_creation_date_label", {
         "call_url_creation_date": callUrlCreationDateString
@@ -89,6 +77,12 @@ loop.conversationViews = (function(mozL10n) {
   });
 
   var OutgoingConversationView = React.createClass({displayName: 'OutgoingConversationView',
+    mixins: [loop.shared.mixins.StoreListeningMixin, Backbone.Events],
+
+    storeWatchAttributes: {
+      "conversationStore": [ "callStatus" ],
+    },
+
     propTypes: {
       conversationStore: React.PropTypes.instanceOf(
         loop.ConversationStore).isRequired,
@@ -96,27 +90,8 @@ loop.conversationViews = (function(mozL10n) {
         loop.Dispatcher).isRequired
     },
 
-    componentWillMount: function() {
-      this.setState({
-        conversationState: this.props.conversationStore.attributes
-      });
-      // Explicit listening for specific events
-      this.props.conversationStore.on("change:callStatus", this.setStoreState, this);
-    },
-
-    componentDidUnmount: function() {
-      this.props.conversationStore.off(null, null, this);
-    },
-
-    setStoreState: function(model) {
-      this.setState({
-        conversationState: model.attributes
-      });
-    },
-
-
     render: function() {
-      switch (this.state.conversationState.callStatus) {
+      switch (this.state.conversationStore.callStatus) {
         case "start": {
           return (
             StartConversationView({
