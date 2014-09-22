@@ -13,9 +13,9 @@ loop.conversationViews = (function(mozL10n) {
   var StartConversationView = React.createClass({
     mixins: [loop.shared.mixins.StoreListeningMixin, Backbone.Events],
 
-    storeWatchAttributes: {
-      "conversationStore": [ "urlCreationDateString" ],
-    },
+    storesToWatch: [
+      "conversationStore"
+    ],
 
     propTypes: {
       conversationStore: React.PropTypes.instanceOf(
@@ -28,7 +28,7 @@ loop.conversationViews = (function(mozL10n) {
       // XXX This view is really a shorted hack of the previous
       // one, just to show what we're dealing with.
 
-      var callUrlCreationDateString = this.state.conversationStore.urlCreationDateString;
+      var callUrlCreationDateString = this.state.urlCreationDateString;
 
       var fromDateString = mozL10n.get("call_url_creation_date_label", {
         "call_url_creation_date": callUrlCreationDateString
@@ -79,9 +79,9 @@ loop.conversationViews = (function(mozL10n) {
   var OutgoingConversationView = React.createClass({
     mixins: [loop.shared.mixins.StoreListeningMixin, Backbone.Events],
 
-    storeWatchAttributes: {
-      "conversationStore": [ "callStatus" ],
-    },
+    storesToWatch: [
+      "conversationStore"
+    ],
 
     propTypes: {
       conversationStore: React.PropTypes.instanceOf(
@@ -91,7 +91,7 @@ loop.conversationViews = (function(mozL10n) {
     },
 
     render: function() {
-      switch (this.state.conversationStore.callStatus) {
+      switch (this.state.callStatus) {
         case "start": {
           return (
             <StartConversationView

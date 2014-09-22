@@ -87,38 +87,29 @@ loop.shared.mixins = (function() {
     }
   };
 
+  // XXX We need to make this backbone independent, so that we can listen to other types
+  // of event, e.g. windows.
   var StoreListeningMixin = {
-    saveStoreAttributes: function(name, attributeNames, attributes) {
-      var newState = {};
-      // Only save attributes we're interested in.
-      newState[name] = _.pick(attributes, attributeNames);
-      this.setState(newState);
-    },
-
     componentWillMount: function() {
-      Object.keys(this.storeWatchAttributes).forEach(function(storeName) {
-        this.saveStoreAttributes(storeName,
-                                 this.storeWatchAttributes[storeName],
-                                 this.props[storeName].attributes);
+      this.storesToWatch.forEach(function(storeName) {
+        this.setState(this.props[storeName].attributes);
 
         this.listenTo(this.props[storeName], "change", this.setStoreState);
       }.bind(this));
     },
 
     componentWillUnmount: function() {
-      Object.keys(this.storeWatchAttributes).forEach(function(storeName) {
+      this.storesToWatch.forEach(function(storeName) {
         this.stopListening(this.props[storeName], "change", this.setStoreState);
       }.bind(this));
     },
 
     setStoreState: function(model) {
-      Object.keys(this.storeWatchAttributes).forEach(function(storeName) {
+      this.storesToWatch.forEach(function(storeName) {
         // The isMounted check is required because sometimes backbone doesn't
         // cancel pending updates when we tell it to stopListening.
         if (model === this.props[storeName] && this.isMounted()) {
-          this.saveStoreAttributes(storeName,
-                                   this.storeWatchAttributes[storeName],
-                                   model.attributes);
+          this.setState(model.attributes);
         }
       }.bind(this));
     }
