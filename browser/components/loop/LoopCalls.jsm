@@ -47,7 +47,7 @@ CallProgressSocket.prototype = {
   connect: function(onSuccess, onError) {
     this._onSuccess = onSuccess;
     this._onError = onError ||
-      (reason => {MozLoopService.logwarn("LoopCalls::callProgessSocket - ", reason);});
+      (reason => {MozLoopService.log.warn("LoopCalls::callProgessSocket - ", reason);});
 
     if (!onSuccess) {
       this._onError("missing onSuccess argument");
@@ -128,7 +128,7 @@ CallProgressSocket.prototype = {
       msg = JSON.parse(aMsg);
     }
     catch (error) {
-      MozLoopService.logerror("LoopCalls: error parsing progress message - ", error);
+      MozLoopService.log.error("LoopCalls: error parsing progress message - ", error);
       return;
     }
 
@@ -146,7 +146,7 @@ CallProgressSocket.prototype = {
    */
   _send: function(aMsg) {
     if (!this._handshakeComplete) {
-      MozLoopService.logwarn("LoopCalls::_send error - handshake not complete");
+      MozLoopService.log.warn("LoopCalls::_send error - handshake not complete");
       return;
     }
 
@@ -179,13 +179,11 @@ CallProgressSocket.prototype = {
  * and register with the Loop server.
  */
 let LoopCallsInternal = {
-  callsData: {
-    inUse: false,
-  },
-
   mocks: {
     webSocket: undefined,
   },
+
+  conversationInProgress: {},
 
   /**
    * Callback from MozLoopPushHandler - A push notification has been received from
@@ -248,21 +246,19 @@ let LoopCallsInternal = {
       let respData = JSON.parse(response.body);
       if (respData.calls && Array.isArray(respData.calls)) {
         respData.calls.forEach((callData) => {
-          if (!this.callsData.inUse) {
+          if ("id" in this.conversationInProgress) {
+            this._returnBusy(callData);
+          } else {
             callData.sessionType = sessionType;
-            // XXX Bug 1090209 will transiton into a better window id.
-            callData.windowId = callData.callId;
             callData.type = "incoming";
             this._startCall(callData);
-          } else {
-            this._returnBusy(callData);
           }
         });
       } else {
-        MozLoopService.logwarn("Error: missing calls[] in response");
+        MozLoopService.log.warn("Error: missing calls[] in response");
       }
     } catch (err) {
-      MozLoopService.logwarn("Error parsing calls info", err);
+      MozLoopService.log.warn("Error parsing calls info", err);
     }
   },
 
@@ -274,13 +270,7 @@ let LoopCallsInternal = {
    *                          "outgoing".
    */
   _startCall: function(callData) {
-    this.callsData.inUse = true;
-    this.callsData.data = callData;
-    MozLoopService.openChatWindow(
-      null,
-      // No title, let the page set that, to avoid flickering.
-      "",
-      "about:loopconversation#" + callData.windowId);
+    this.conversationInProgress.id = MozLoopService.openChatWindow(callData);
   },
 
   /**
@@ -291,15 +281,13 @@ let LoopCallsInternal = {
    * @return true if the call is opened, false if it is not opened (i.e. busy)
    */
   startDirectCall: function(contact, callType) {
-    if (this.callsData.inUse)
+    if ("id" in this.conversationInProgress)
       return false;
 
     var callData = {
       contact: contact,
       callType: callType,
-      type: "outgoing",
-      // XXX Really we shouldn't be using random numbers, bug 1090209 will fix this.
-      windowId: Math.floor((Math.random() * 100000000))
+      type: "outgoing"
     };
 
     this._startCall(callData);
@@ -360,6 +348,16 @@ this.LoopCalls = {
     }
   },
 
+  setCallInProgress: function(conversationWindowId) {
+    if ("id" in LoopCallsInternal.conversationInProgress &&
+        LoopCallsInternal.conversationInProgress.id != conversationWindowId) {
+      MozLoopService.log.error("Starting a new conversation when one is already in progress?");
+      return;
+    }
+
+    LoopCallsInternal.conversationInProgress.id = conversationWindowId;
+  },
+
   /**
    * Releases the callData for a specific conversation window id.
    *
@@ -367,11 +365,9 @@ this.LoopCalls = {
    *
    * @param {Number} conversationWindowId
    */
-  releaseCallData: function(conversationWindowId) {
-    if (LoopCallsInternal.callsData.data &&
-        LoopCallsInternal.callsData.data.windowId == conversationWindowId) {
-      LoopCallsInternal.callsData.data = undefined;
-      LoopCallsInternal.callsData.inUse = false;
+  clearCallInProgress: function(conversationWindowId) {
+    if (LoopCallsInternal.conversationInProgress.id == conversationWindowId) {
+      delete LoopCallsInternal.conversationInProgress.id;
     }
   },
 

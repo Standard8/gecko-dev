@@ -59,6 +59,7 @@ describe("loop.store.LocalRoomStore", function () {
       });
 
       dispatcher.dispatch(new sharedActions.SetupWindowData({
+        windowId: "42",
         windowData: {
           type: "room",
           localRoomId: fakeRoomId
@@ -76,6 +77,7 @@ describe("loop.store.LocalRoomStore", function () {
         });
 
         dispatcher.dispatch(new sharedActions.SetupWindowData({
+          windowId: "42",
           windowData: {
             type: "room",
             localRoomId: fakeRoomId
@@ -93,6 +95,7 @@ describe("loop.store.LocalRoomStore", function () {
         });
 
         dispatcher.dispatch(new sharedActions.SetupWindowData({
+          windowId: "42",
           windowData: {
             type: "room",
             localRoomId: fakeRoomId
@@ -116,6 +119,7 @@ describe("loop.store.LocalRoomStore", function () {
         });
 
         dispatcher.dispatch(new sharedActions.SetupWindowData({
+          windowId: "42",
           windowData: {
             type: "room",
             localRoomId: fakeRoomId

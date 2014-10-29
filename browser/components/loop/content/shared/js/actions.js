@@ -42,6 +42,7 @@ loop.shared.actions = (function() {
      * record the appropriate data.
      */
     SetupWindowData: Action.define("setupWindowData", {
+      windowId: String,
       windowData: Object
     }),
 

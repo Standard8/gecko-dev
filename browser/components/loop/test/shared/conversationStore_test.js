@@ -38,7 +38,8 @@ describe("loop.store.ConversationStore", function () {
 
     navigator.mozLoop = {
       getLoopBoolPref: sandbox.stub(),
-      releaseCallData: sandbox.stub()
+      setCallInProgress: sandbox.stub(),
+      clearCallInProgress: sandbox.stub()
     };
 
     dispatcher = new loop.Dispatcher();
@@ -156,8 +157,8 @@ describe("loop.store.ConversationStore", function () {
       dispatcher.dispatch(
         new sharedActions.ConnectionFailure({reason: "fake"}));
 
-      sinon.assert.calledOnce(navigator.mozLoop.releaseCallData);
-      sinon.assert.calledWithExactly(navigator.mozLoop.releaseCallData, "42");
+      sinon.assert.calledOnce(navigator.mozLoop.clearCallInProgress);
+      sinon.assert.calledWithExactly(navigator.mozLoop.clearCallInProgress, "42");
     });
   });
 
@@ -227,10 +228,10 @@ describe("loop.store.ConversationStore", function () {
     beforeEach(function() {
       store.set({callState: CALL_STATES.INIT});
       fakeSetupWindowData = {
+        windowId: "123456",
         windowData: {
           type: "outgoing",
           contact: contact,
-          windowId: "123456",
           callType: sharedUtils.CALL_TYPES.AUDIO_VIDEO
         }
       };
@@ -504,8 +505,8 @@ describe("loop.store.ConversationStore", function () {
     it("should release mozLoop callsData", function() {
       dispatcher.dispatch(new sharedActions.HangupCall());
 
-      sinon.assert.calledOnce(navigator.mozLoop.releaseCallData);
-      sinon.assert.calledWithExactly(navigator.mozLoop.releaseCallData, "42");
+      sinon.assert.calledOnce(navigator.mozLoop.clearCallInProgress);
+      sinon.assert.calledWithExactly(navigator.mozLoop.clearCallInProgress, "42");
     });
   });
 
@@ -544,8 +545,8 @@ describe("loop.store.ConversationStore", function () {
     it("should release mozLoop callsData", function() {
       dispatcher.dispatch(new sharedActions.PeerHungupCall());
 
-      sinon.assert.calledOnce(navigator.mozLoop.releaseCallData);
-      sinon.assert.calledWithExactly(navigator.mozLoop.releaseCallData, "42");
+      sinon.assert.calledOnce(navigator.mozLoop.clearCallInProgress);
+      sinon.assert.calledWithExactly(navigator.mozLoop.clearCallInProgress, "42");
     });
   });
 
@@ -592,8 +593,8 @@ describe("loop.store.ConversationStore", function () {
     it("should release mozLoop callsData", function() {
       dispatcher.dispatch(new sharedActions.CancelCall());
 
-      sinon.assert.calledOnce(navigator.mozLoop.releaseCallData);
-      sinon.assert.calledWithExactly(navigator.mozLoop.releaseCallData, "42");
+      sinon.assert.calledOnce(navigator.mozLoop.clearCallInProgress);
+      sinon.assert.calledWithExactly(navigator.mozLoop.clearCallInProgress, "42");
     });
   });
 

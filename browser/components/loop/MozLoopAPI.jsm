@@ -214,11 +214,20 @@ function injectLoopAPI(targetWindow) {
      * @param {Number} conversationWindowId
      * @returns {callData} The callData or undefined if error.
      */
-    getCallData: {
+    getConversationWindowData: {
       enumerable: true,
       writable: true,
       value: function(conversationWindowId) {
-        return Cu.cloneInto(LoopCalls.getCallData(conversationWindowId), targetWindow);
+        return Cu.cloneInto(MozLoopService.getConversationWindowData(conversationWindowId),
+          targetWindow);
+      }
+    },
+
+    setCallInProgress: {
+      enumerable: true,
+      writable: true,
+      value: function(conversationWindowId) {
+        LoopCalls.setCallInProgress(conversationWindowId);
       }
     },
 
@@ -229,11 +238,11 @@ function injectLoopAPI(targetWindow) {
      *
      * @param {Number} conversationWindowId
      */
-    releaseCallData: {
+    clearCallInProgress: {
       enumerable: true,
       writable: true,
       value: function(conversationWindowId) {
-        LoopCalls.releaseCallData(conversationWindowId);
+        LoopCalls.clearCallInProgress(conversationWindowId);
       }
     },
 

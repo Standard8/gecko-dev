@@ -200,7 +200,7 @@ loop.store.ConversationStore = (function() {
       this.set({
         contact: windowData.contact,
         outgoing: windowType === "outgoing",
-        windowId: windowData.windowId,
+        windowId: actionData.windowId,
         callType: windowData.callType,
         callState: CALL_STATES.GATHER,
         videoMuted: windowData.callType === CALL_TYPES.AUDIO_ONLY
@@ -317,6 +317,8 @@ loop.store.ConversationStore = (function() {
       var contactAddresses = [];
       var contact = this.get("contact");
 
+      navigator.mozLoop.setCallInProgress(this.get("windowId"));
+
       function appendContactValues(property, strip) {
         if (contact.hasOwnProperty(property)) {
           contact[property].forEach(function(item) {
@@ -396,7 +398,7 @@ loop.store.ConversationStore = (function() {
         delete this._websocket;
       }
 
-      navigator.mozLoop.releaseCallData(this.get("windowId"));
+      navigator.mozLoop.clearCallInProgress(this.get("windowId"));
     },
 
     /**
