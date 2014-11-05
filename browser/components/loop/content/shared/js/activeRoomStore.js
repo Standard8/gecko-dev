@@ -11,6 +11,17 @@ loop.store.ActiveRoomStore = (function() {
 
   var sharedActions = loop.shared.actions;
 
+  var ROOM_STATES = loop.store.ROOM_STATES = {
+    // The initial state of the room
+    INIT: "rm-init",
+    // The store is gathering the room data
+    GATHER: "rm-gather",
+    // The store has got the room data
+    READY: "rm-ready",
+    // There was an issue with the room
+    FAILED: "rm-failed"
+  };
+
   /**
    * Store for things that are local to this instance (in this profile, on
    * this machine) of this roomRoom store, in addition to a mirror of some
@@ -39,31 +50,33 @@ loop.store.ActiveRoomStore = (function() {
     this.dispatcher.register(this, [
       "setupWindowData"
     ]);
-  }
-
-  ActiveRoomStore.prototype = _.extend({
 
     /**
      * Stored data reflecting the local state of a given room, used to drive
      * the room's views.
      *
-     * @property {Object} serverData - local cache of the data returned by
-     *                                 MozLoop.getRoomData for this room.
      * @see https://wiki.mozilla.org/Loop/Architecture/Rooms#GET_.2Frooms.2F.7Btoken.7D
+     *      for the main data.
      *
      * @property {Error=} error - if the room is an error state, this will be
      *                            set to an Error object reflecting the problem;
      *                            otherwise it will be unset.
      */
-    _storeState: {
-    },
+    this._storeState = {
+      roomState: ROOM_STATES.INIT
+    };
+  }
+
+  ActiveRoomStore.prototype = _.extend({
 
     getStoreState: function() {
       return this._storeState;
     },
 
-    setStoreState: function(state) {
-      this._storeState = state;
+    setStoreState: function(newState) {
+      for (var key in newState) {
+        this._storeState[key] = newState[key];
+      }
       this.trigger("change");
     },
 
@@ -84,14 +97,18 @@ loop.store.ActiveRoomStore = (function() {
         // Nothing for us to do here, leave it to other stores.
         return;
       }
+      this.setStoreState({
+        roomState: ROOM_STATES.GATHER
+      });
 
       this.mozLoop.rooms.get(actionData.roomToken,
         function(error, roomData) {
-          this.setStoreState({
+
+          this.setStoreState(_.extend({
             error: error,
-            roomToken: actionData.roomToken,
-            serverData: roomData
-          });
+            roomState: error ? ROOM_STATES.FAILED : ROOM_STATES.READY,
+            roomToken: actionData.roomToken
+          }, roomData));
         }.bind(this));
     }
 

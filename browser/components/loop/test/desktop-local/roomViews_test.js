@@ -43,7 +43,7 @@ describe("loop.roomViews", function () {
       it("should set document.title to store.serverData.roomName", function() {
         mountTestComponent();
 
-        activeRoomStore.setStoreState({serverData: {roomName: "fakeName"}});
+        activeRoomStore.setStoreState({roomName: "fakeName"});
 
         expect(fakeWindow.document.title).to.equal("fakeName");
       });

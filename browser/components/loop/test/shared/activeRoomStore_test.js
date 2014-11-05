@@ -53,11 +53,11 @@ describe("loop.store.ActiveRoomStore", function () {
     });
 
     it("should trigger a change event", function(done) {
-      store.on("change", function() {
+      store.once("change", function() {
         done();
       });
 
-      dispatcher.dispatch(new sharedActions.SetupWindowData({
+      store.setupWindowData(new sharedActions.SetupWindowData({
         windowId: "42",
         type: "room",
         roomToken: fakeToken
@@ -65,39 +65,32 @@ describe("loop.store.ActiveRoomStore", function () {
     });
 
     it("should set roomToken on the store from the action data",
-      function(done) {
-
-        store.once("change", function () {
-          expect(store.getStoreState()).
-            to.have.property('roomToken', fakeToken);
-          done();
-        });
-
-        dispatcher.dispatch(new sharedActions.SetupWindowData({
+      function() {
+        store.setupWindowData(new sharedActions.SetupWindowData({
           windowId: "42",
           type: "room",
           roomToken: fakeToken
         }));
+
+        expect(store.getStoreState()).
+          to.have.property('roomToken', fakeToken);
       });
 
-    it("should set serverData.roomName from the getRoomData callback",
-      function(done) {
+    it("should set roomName from the getRoomData callback",
+      function() {
 
-        store.once("change", function () {
-          expect(store.getStoreState()).to.have.deep.property(
-            'serverData.roomName', fakeRoomName);
-          done();
-        });
-
-        dispatcher.dispatch(new sharedActions.SetupWindowData({
+        store.setupWindowData(new sharedActions.SetupWindowData({
           windowId: "42",
           type: "room",
           roomToken: fakeToken
         }));
+
+        expect(store.getStoreState()).to.have.deep.property(
+          'roomName', fakeRoomName);
       });
 
     it("should set error on the store when getRoomData calls back an error",
-      function(done) {
+      function() {
 
         var fakeError = new Error("fake error");
         fakeMozLoop.rooms.get.
@@ -106,17 +99,13 @@ describe("loop.store.ActiveRoomStore", function () {
           store, // |this| to call it on
           fakeError); // args to call the callback with...
 
-        store.once("change", function() {
-          expect(this.getStoreState()).to.have.property('error', fakeError);
-          done();
-        });
-
-        dispatcher.dispatch(new sharedActions.SetupWindowData({
+        store.setupWindowData(new sharedActions.SetupWindowData({
           windowId: "42",
           type: "room",
           roomToken: fakeToken
         }));
-      });
 
+        expect(store.getStoreState()).to.have.property('error', fakeError);
+      });
   });
 });

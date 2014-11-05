@@ -19,7 +19,7 @@ loop.roomViews = (function(mozL10n) {
     },
 
     getInitialState: function() {
-      return this.props.roomStore.getStoreState();
+      return this.props.roomStore.getStoreState("activeRoom");
     },
 
     componentWillMount: function() {
@@ -42,12 +42,14 @@ loop.roomViews = (function(mozL10n) {
     },
 
     render: function() {
-      if (this.state.serverData && this.state.serverData.roomName) {
-        this.setTitle(this.state.serverData.roomName);
+      if (this.state.roomName) {
+        this.setTitle(this.state.roomName);
       }
 
       return (
-        React.DOM.div({className: "goat"})
+        React.DOM.div(null, 
+          React.DOM.div(null, "Test ", this.state.roomState)
+        )
       );
     }
   });
