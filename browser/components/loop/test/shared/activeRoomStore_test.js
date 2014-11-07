@@ -7,7 +7,7 @@ describe("loop.store.ActiveRoomStore", function () {
   "use strict";
 
   var ROOM_STATES = loop.store.ROOM_STATES;
-  var sandbox, dispatcher, store, fakeMozLoop;
+  var sandbox, dispatcher, store, fakeMozLoop, fakeSdkDriver;
 
   beforeEach(function() {
     sandbox = sinon.sandbox.create();
@@ -25,8 +25,16 @@ describe("loop.store.ActiveRoomStore", function () {
       }
     };
 
-    store = new loop.store.ActiveRoomStore(
-      {mozLoop: fakeMozLoop, dispatcher: dispatcher});
+    fakeSdkDriver = {
+      connectSession: sandbox.stub(),
+      disconnectSession: sandbox.stub()
+    };
+
+    store = new loop.store.ActiveRoomStore({
+      dispatcher: dispatcher,
+      mozLoop: fakeMozLoop,
+      sdkDriver: fakeSdkDriver
+    });
   });
 
   afterEach(function() {

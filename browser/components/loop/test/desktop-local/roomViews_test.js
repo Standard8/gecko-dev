@@ -32,7 +32,8 @@ describe("loop.roomViews", function () {
 
     activeRoomStore = new loop.store.ActiveRoomStore({
       dispatcher: dispatcher,
-      mozLoop: {}
+      mozLoop: {},
+      sdkDriver: {}
     });
     roomStore = new loop.store.RoomStore({
       dispatcher: dispatcher,
@@ -62,6 +63,8 @@ describe("loop.roomViews", function () {
 
       expect(testView.state).eql({
         roomState: ROOM_STATES.INIT,
+        audioMuted: false,
+        videoMuted: false,
         foo: "bar"
       });
     });
@@ -77,12 +80,16 @@ describe("loop.roomViews", function () {
 
       activeRoomStore.setStoreState({roomState: ROOM_STATES.READY});
 
-      expect(testView.state).eql({roomState: ROOM_STATES.READY});
+      expect(testView.state.roomState).eql(ROOM_STATES.READY);
     });
   });
 
   describe("DesktopRoomConversationView", function() {
     var view;
+
+    beforeEach(function() {
+      sandbox.stub(dispatcher, "dispatch");
+    });
 
     function mountTestComponent() {
       return TestUtils.renderIntoDocument(
@@ -91,6 +98,15 @@ describe("loop.roomViews", function () {
           roomStore: roomStore
         }));
     }
+
+    it("should dispatch a setupStreamElements action when the view is created",
+      function() {
+        view = mountTestComponent();
+
+        sinon.assert.calledOnce(dispatcher.dispatch);
+        sinon.assert.calledWithMatch(dispatcher.dispatch,
+          sinon.match.hasOwn("name", "setupStreamElements"));
+    });
 
     describe("#render", function() {
       it("should set document.title to store.serverData.roomName", function() {
