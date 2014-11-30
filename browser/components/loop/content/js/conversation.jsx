@@ -16,205 +16,14 @@ loop.conversation = (function(mozL10n) {
   var sharedModels = loop.shared.models;
   var sharedActions = loop.shared.actions;
 
+  var IncomingCallView = loop.conversationViews.IncomingCallView;
   var OutgoingConversationView = loop.conversationViews.OutgoingConversationView;
   var CallIdentifierView = loop.conversationViews.CallIdentifierView;
+  var GenericFailureView = loop.conversationViews.GenericFailureView;
   var DesktopRoomConversationView = loop.roomViews.DesktopRoomConversationView;
 
   // Matches strings of the form "<nonspaces>@<nonspaces>" or "+<digits>"
   var EMAIL_OR_PHONE_RE = /^(:?\S+@\S+|\+\d+)$/;
-
-  var IncomingCallView = React.createClass({
-    mixins: [sharedMixins.DropdownMenuMixin, sharedMixins.AudioMixin],
-
-    propTypes: {
-      model: React.PropTypes.object.isRequired,
-      video: React.PropTypes.bool.isRequired
-    },
-
-    getDefaultProps: function() {
-      return {
-        showMenu: false,
-        video: true
-      };
-    },
-
-    clickHandler: function(e) {
-      var target = e.target;
-      if (!target.classList.contains('btn-chevron')) {
-        this._hideDeclineMenu();
-      }
-    },
-
-    _handleAccept: function(callType) {
-      return function() {
-        this.props.model.set("selectedCallType", callType);
-        this.props.model.trigger("accept");
-      }.bind(this);
-    },
-
-    _handleDecline: function() {
-      this.props.model.trigger("decline");
-    },
-
-    _handleDeclineBlock: function(e) {
-      this.props.model.trigger("declineAndBlock");
-      /* Prevent event propagation
-       * stop the click from reaching parent element */
-      return false;
-    },
-
-    /*
-     * Generate props for <AcceptCallButton> component based on
-     * incoming call type. An incoming video call will render a video
-     * answer button primarily, an audio call will flip them.
-     **/
-    _answerModeProps: function() {
-      var videoButton = {
-        handler: this._handleAccept("audio-video"),
-        className: "fx-embedded-btn-icon-video",
-        tooltip: "incoming_call_accept_audio_video_tooltip"
-      };
-      var audioButton = {
-        handler: this._handleAccept("audio"),
-        className: "fx-embedded-btn-audio-small",
-        tooltip: "incoming_call_accept_audio_only_tooltip"
-      };
-      var props = {};
-      props.primary = videoButton;
-      props.secondary = audioButton;
-
-      // When video is not enabled on this call, we swap the buttons around.
-      if (!this.props.video) {
-        audioButton.className = "fx-embedded-btn-icon-audio";
-        videoButton.className = "fx-embedded-btn-video-small";
-        props.primary = audioButton;
-        props.secondary = videoButton;
-      }
-
-      return props;
-    },
-
-    render: function() {
-      /* jshint ignore:start */
-      var dropdownMenuClassesDecline = React.addons.classSet({
-        "native-dropdown-menu": true,
-        "conversation-window-dropdown": true,
-        "visually-hidden": !this.state.showMenu
-      });
-
-      return (
-        <div className="call-window">
-          <CallIdentifierView video={this.props.video}
-            peerIdentifier={this.props.model.getCallIdentifier()}
-            urlCreationDate={this.props.model.get("urlCreationDate")}
-            showIcons={true} />
-
-          <div className="btn-group call-action-group">
-
-            <div className="fx-embedded-call-button-spacer"></div>
-
-            <div className="btn-chevron-menu-group">
-              <div className="btn-group-chevron">
-                <div className="btn-group">
-
-                  <button className="btn btn-decline"
-                          onClick={this._handleDecline}>
-                    {mozL10n.get("incoming_call_cancel_button")}
-                  </button>
-                  <div className="btn-chevron" onClick={this.toggleDropdownMenu} />
-                </div>
-
-                <ul className={dropdownMenuClassesDecline}>
-                  <li className="btn-block" onClick={this._handleDeclineBlock}>
-                    {mozL10n.get("incoming_call_cancel_and_block_button")}
-                  </li>
-                </ul>
-
-              </div>
-            </div>
-
-            <div className="fx-embedded-call-button-spacer"></div>
-
-            <AcceptCallButton mode={this._answerModeProps()} />
-
-            <div className="fx-embedded-call-button-spacer"></div>
-
-          </div>
-        </div>
-      );
-      /* jshint ignore:end */
-    }
-  });
-
-  /**
-   * Incoming call view accept button, renders different primary actions
-   * (answer with video / with audio only) based on the props received
-   **/
-  var AcceptCallButton = React.createClass({
-
-    propTypes: {
-      mode: React.PropTypes.object.isRequired,
-    },
-
-    render: function() {
-      var mode = this.props.mode;
-      return (
-        /* jshint ignore:start */
-        <div className="btn-chevron-menu-group">
-          <div className="btn-group">
-            <button className="btn btn-accept"
-                    onClick={mode.primary.handler}
-                    title={mozL10n.get(mode.primary.tooltip)}>
-              <span className="fx-embedded-answer-btn-text">
-                {mozL10n.get("incoming_call_accept_button")}
-              </span>
-              <span className={mode.primary.className}></span>
-            </button>
-            <div className={mode.secondary.className}
-                 onClick={mode.secondary.handler}
-                 title={mozL10n.get(mode.secondary.tooltip)}>
-            </div>
-          </div>
-        </div>
-        /* jshint ignore:end */
-      );
-    }
-  });
-
-  /**
-   * Something went wrong view. Displayed when there's a big problem.
-   *
-   * XXX Based on CallFailedView, but built specially until we flux-ify the
-   * incoming call views (bug 1088672).
-   */
-  var GenericFailureView = React.createClass({
-    mixins: [sharedMixins.AudioMixin],
-
-    propTypes: {
-      cancelCall: React.PropTypes.func.isRequired
-    },
-
-    componentDidMount: function() {
-      this.play("failure");
-    },
-
-    render: function() {
-      document.title = mozL10n.get("generic_failure_title");
-
-      return (
-        <div className="call-window">
-          <h2>{mozL10n.get("generic_failure_title")}</h2>
-
-          <div className="btn-group call-action-group">
-            <button className="btn btn-cancel"
-                    onClick={this.props.cancelCall}>
-              {mozL10n.get("cancel_button")}
-            </button>
-          </div>
-        </div>
-      );
-    }
-  });
 
   /**
    * This view manages the incoming conversation views - from
@@ -720,8 +529,6 @@ loop.conversation = (function(mozL10n) {
   return {
     AppControllerView: AppControllerView,
     IncomingConversationView: IncomingConversationView,
-    IncomingCallView: IncomingCallView,
-    GenericFailureView: GenericFailureView,
     init: init
   };
 })(document.mozL10n);
