@@ -95,6 +95,12 @@ loop.shared.actions = (function() {
     }),
 
     /**
+     * Signals when the user wishes to accept a call.
+     */
+    AcceptCall: Action.define("acceptCall", {
+    }),
+
+    /**
      * Used to initiate connecting of a call with the relevant
      * sessionData.
      */

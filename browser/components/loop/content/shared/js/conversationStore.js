@@ -106,7 +106,17 @@ loop.store = loop.store || {};
         // If the audio is muted
         audioMuted: false,
         // If the video is muted
-        videoMuted: false
+        videoMuted: false,
+
+        // Incoming call information
+        // The incoming call token
+        callToken: undefined,
+        // Creation date of the incoming call url
+        urlCreationDate: undefined,
+        // The incoming call url
+        callUrl: undefined,
+        // The type of hawk session this window is for.
+        sessionType: undefined
       };
     },
 
@@ -203,6 +213,7 @@ loop.store = loop.store || {};
       this.dispatcher.register(this, [
         "connectionFailure",
         "connectionProgress",
+        "acceptCall",
         "connectCall",
         "hangupCall",
         "remotePeerDisconnected",
@@ -213,18 +224,49 @@ loop.store = loop.store || {};
         "fetchEmailLink"
       ]);
 
+      var websocketToken = actionData.websocketToken &&
+        actionData.websocketToken.toString(16);
+
       this.setStoreState({
         contact: actionData.contact,
         outgoing: windowType === "outgoing",
         windowId: actionData.windowId,
         callType: actionData.callType,
         callState: CALL_STATES.GATHER,
-        videoMuted: actionData.callType === CALL_TYPES.AUDIO_ONLY
+        videoMuted: actionData.callType === CALL_TYPES.AUDIO_ONLY,
+        // The items below are typically only set
+        // at this time for incoming calls.
+        sessionId: actionData.sessionId,
+        sessionToken: actionData.sessionToken,
+        sessionType: actionData.sessionType,
+        apiKey: actionData.apiKey,
+        callId: actionData.callId,
+        callerId: actionData.callerId,
+        urlCreationDate: actionData.urlCreationDate,
+        progressURL: actionData.progressURL,
+        websocketToken: websocketToken,
+        callToken: actionData.callToken,
+        callUrl: actionData.callUrl
       });
 
       if (this.getStoreState("outgoing")) {
         this._setupOutgoingCall();
-      } // XXX Else, other types aren't supported yet.
+      } else {
+        this._setupIncomingCall();
+      }
+    },
+
+    /**
+     * Handles the accept call action, accepts the call which starts the
+     * connection process.
+     */
+    acceptCall: function() {
+      if (this.getStoreState("outgoing")) {
+        console.error("Received AcceptCall action in outgoing state");
+        return;
+      }
+
+      this._websocket.accept();
     },
 
     /**
@@ -381,6 +423,17 @@ loop.store = loop.store || {};
             new sharedActions.ConnectCall({sessionData: result}));
         }.bind(this)
       );
+    },
+
+    /**
+     * Sets up an incoming call.
+     *
+     * All we really need to do here
+     * is connect the websocket, as we've already got all the
+     * information when the window opened.
+     */
+    _setupIncomingCall: function() {
+      this._connectWebSocket();
     },
 
     /**

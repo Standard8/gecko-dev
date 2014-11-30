@@ -13,7 +13,7 @@ describe("loop.store.ConversationStore", function () {
   var sandbox, dispatcher, client, store, fakeSessionData, sdkDriver;
   var contact, fakeMozLoop;
   var connectPromise, resolveConnectPromise, rejectConnectPromise;
-  var wsCancelSpy, wsCloseSpy, wsMediaUpSpy, fakeWebsocket;
+  var wsAcceptSpy, wsCancelSpy, wsCloseSpy, wsMediaUpSpy, fakeWebsocket;
 
   function checkFailures(done, f) {
     try {
@@ -55,11 +55,13 @@ describe("loop.store.ConversationStore", function () {
       disconnectSession: sinon.stub()
     };
 
+    wsAcceptSpy = sinon.spy();
     wsCancelSpy = sinon.spy();
     wsCloseSpy = sinon.spy();
     wsMediaUpSpy = sinon.spy();
 
     fakeWebsocket = {
+      accept: wsAcceptSpy,
       cancel: wsCancelSpy,
       close: wsCloseSpy,
       mediaUp: wsMediaUpSpy
@@ -393,6 +395,111 @@ describe("loop.store.ConversationStore", function () {
             sinon.match.hasOwn("reason", "setup"));
         });
       });
+    });
+
+    describe("incoming calls", function() {
+      beforeEach(function() {
+        fakeSetupWindowData = {
+          windowId: "123456",
+          type: "incoming",
+          callType: sharedUtils.CALL_TYPES.AUDIO_VIDEO,
+          callId: "135246",
+          progressURL: "http://invalid",
+          websocketToken: "13579E24680T"
+        };
+      });
+
+      it("should initialize the websocket", function() {
+        sandbox.stub(loop, "CallConnectionWebSocket").returns({
+          promiseConnect: function() { return connectPromise; },
+          on: sinon.spy()
+        });
+
+        store.setupWindowData(
+            new sharedActions.SetupWindowData(fakeSetupWindowData));
+
+        sinon.assert.calledOnce(loop.CallConnectionWebSocket);
+        sinon.assert.calledWithExactly(loop.CallConnectionWebSocket, {
+          url: "http://invalid",
+          callId: "135246",
+          websocketToken: "13579E24680T"
+        });
+      });
+
+      it("should connect the websocket to the server", function() {
+        store.setupWindowData(
+            new sharedActions.SetupWindowData(fakeSetupWindowData));
+
+        sinon.assert.calledOnce(store._websocket.promiseConnect);
+      });
+
+      describe("WebSocket connection result", function() {
+        beforeEach(function() {
+          store.setupWindowData(
+              new sharedActions.SetupWindowData(fakeSetupWindowData));
+
+          sandbox.stub(dispatcher, "dispatch");
+        });
+
+        it("should dispatch a connection progress action on success", function(done) {
+          resolveConnectPromise(WS_STATES.INIT);
+
+          connectPromise.then(function() {
+            checkFailures(done, function() {
+              sinon.assert.calledOnce(dispatcher.dispatch);
+              // Can't use instanceof here, as that matches any action
+              sinon.assert.calledWithMatch(dispatcher.dispatch,
+                sinon.match.hasOwn("name", "connectionProgress"));
+              sinon.assert.calledWithMatch(dispatcher.dispatch,
+                sinon.match.hasOwn("wsState", WS_STATES.INIT));
+            });
+          }, function() {
+            done(new Error("Promise should have been resolve, not rejected"));
+          });
+        });
+
+        it("should dispatch a connection failure action on failure", function(done) {
+          rejectConnectPromise();
+
+          connectPromise.then(function() {
+            done(new Error("Promise should have been rejected, not resolved"));
+           }, function() {
+            checkFailures(done, function() {
+              sinon.assert.calledOnce(dispatcher.dispatch);
+              // Can't use instanceof here, as that matches any action
+              sinon.assert.calledWithMatch(dispatcher.dispatch,
+                sinon.match.hasOwn("name", "connectionFailure"));
+              sinon.assert.calledWithMatch(dispatcher.dispatch,
+                sinon.match.hasOwn("reason", "websocket-setup"));
+             });
+          });
+        });
+      });
+    });
+  });
+
+  describe("#acceptCall", function() {
+    beforeEach(function() {
+      store._websocket = fakeWebsocket;
+      sandbox.stub(console, "error");
+    });
+
+    it("should call accept on the websocket for incoming calls", function() {
+      store.setStoreState({outgoing: false});
+
+      store.acceptCall(
+        new sharedActions.AcceptCall());
+
+      sinon.assert.calledOnce(wsAcceptSpy);
+    });
+
+    it("should not call accept for outgoing calls", function() {
+      store.setStoreState({outgoing: true});
+
+      store.acceptCall(
+        new sharedActions.AcceptCall());
+
+      sinon.assert.notCalled(wsAcceptSpy);
     });
   });
 
