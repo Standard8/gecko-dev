@@ -98,6 +98,20 @@ loop.shared.actions = (function() {
      * Signals when the user wishes to accept a call.
      */
     AcceptCall: Action.define("acceptCall", {
+      // See loop.shared.utils.CALL_TYPES
+      callType: String
+    }),
+
+    /**
+     * Signals when the user wishes to decline a call.
+     */
+    DeclineCall: Action.define("declineCall", {
+    }),
+
+    /**
+     * Signals when the user wishes to decline and block a caller.
+     */
+    BlockCall: Action.define("blockCall", {
     }),
 
     /**

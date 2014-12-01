@@ -7,13 +7,14 @@ describe("loop.store.ConversationStore", function () {
   "use strict";
 
   var CALL_STATES = loop.store.CALL_STATES;
+  var CALL_TYPES = loop.shared.utils.CALL_TYPES;
   var WS_STATES = loop.store.WS_STATES;
   var sharedActions = loop.shared.actions;
   var sharedUtils = loop.shared.utils;
   var sandbox, dispatcher, client, store, fakeSessionData, sdkDriver;
-  var contact, fakeMozLoop;
+  var contact, fakeMozLoop, fakeWebsocket;
   var connectPromise, resolveConnectPromise, rejectConnectPromise;
-  var wsAcceptSpy, wsCancelSpy, wsCloseSpy, wsMediaUpSpy, fakeWebsocket;
+  var wsAcceptSpy, wsCancelSpy, wsCloseSpy, wsDeclineSpy, wsMediaUpSpy;
 
   function checkFailures(done, f) {
     try {
@@ -58,12 +59,14 @@ describe("loop.store.ConversationStore", function () {
     wsAcceptSpy = sinon.spy();
     wsCancelSpy = sinon.spy();
     wsCloseSpy = sinon.spy();
+    wsDeclineSpy = sinon.spy();
     wsMediaUpSpy = sinon.spy();
 
     fakeWebsocket = {
       accept: wsAcceptSpy,
       cancel: wsCancelSpy,
       close: wsCloseSpy,
+      decline: wsDeclineSpy,
       mediaUp: wsMediaUpSpy
     };
 
@@ -484,23 +487,56 @@ describe("loop.store.ConversationStore", function () {
       sandbox.stub(console, "error");
     });
 
-    it("should call accept on the websocket for incoming calls", function() {
+    it("should call `accept` on the websocket for incoming calls", function() {
       store.setStoreState({outgoing: false});
 
       store.acceptCall(
-        new sharedActions.AcceptCall());
+        new sharedActions.AcceptCall({
+          callType: CALL_TYPES.AUDIO_ONLY
+        }));
 
       sinon.assert.calledOnce(wsAcceptSpy);
     });
 
-    it("should not call accept for outgoing calls", function() {
+    it("should not call `accept` for outgoing calls", function() {
       store.setStoreState({outgoing: true});
 
       store.acceptCall(
-        new sharedActions.AcceptCall());
+        new sharedActions.AcceptCall({
+          callType: CALL_TYPES.AUDIO_ONLY
+        }));
 
       sinon.assert.notCalled(wsAcceptSpy);
     });
+  });
+
+  describe("#declineCall", function() {
+    beforeEach(function() {
+      store._websocket = fakeWebsocket;
+    });
+
+    it("should call `decline` on the websocket", function() {
+      store.declineCall();
+
+      sinon.assert.calledOnce(wsDeclineSpy);
+    });
+
+    it("should set callState to `CLOSE`", function() {
+      store.declineCall();
+
+      expect(store.getStoreState("callState")).eql(CALL_STATES.CLOSE);
+    });
+  });
+
+  describe("#blockCall", function() {
+    beforeEach(function() {
+      store._websocket = fakeWebsocket;
+    });
+
+    it("should call delete call on the client");
+    it("should get callToken from conversation model");
+    it("should trigger error handling in case of error");
+    it("should close the window");
   });
 
   describe("#connectCall", function() {

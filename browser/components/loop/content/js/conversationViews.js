@@ -172,21 +172,37 @@ loop.conversationViews = (function(mozL10n) {
     }
   });
 
+  /**
+   * Handles Accepting or rejecting of incoming calls.
+   */
   var IncomingCallView = React.createClass({displayName: 'IncomingCallView',
     mixins: [sharedMixins.DropdownMenuMixin, sharedMixins.AudioMixin],
 
     propTypes: {
-      model: React.PropTypes.object.isRequired,
-      video: React.PropTypes.bool.isRequired
+      dispatcher: React.PropTypes.instanceOf(loop.Dispatcher).isRequired,
+      mozLoop: React.PropTypes.object.isRequired,
+      incomingHasVideo: React.PropTypes.bool.isRequired,
+      callerId: React.PropTypes.string,
+      callUrl: React.PropTypes.string,
+      urlCreationDate: React.PropTypes.string
     },
 
     getDefaultProps: function() {
       return {
         showMenu: false,
-        video: true
+        incomingHasVideo: true
       };
     },
 
+    componentWillMount: function() {
+      this.props.mozLoop.startAlerting();
+    },
+
+    componentWillUnmount: function() {
+      this.props.mozLoop.stopAlerting();
+    },
+
+// XXX Is this really needed, doesn't seem to do anything????
     clickHandler: function(e) {
       var target = e.target;
       if (!target.classList.contains('btn-chevron')) {
@@ -196,27 +212,31 @@ loop.conversationViews = (function(mozL10n) {
 
     _handleAccept: function(callType) {
       return function() {
-        this.props.model.set("selectedCallType", callType);
-        this.props.model.trigger("accept");
+        this.props.dispatcher.dispatch(new sharedActions.AcceptCall({
+          callType: callType
+        }));
       }.bind(this);
     },
 
     _handleDecline: function() {
-      this.props.model.trigger("decline");
-    },
-
-    _handleDeclineBlock: function(e) {
-      this.props.model.trigger("declineAndBlock");
-      /* Prevent event propagation
-       * stop the click from reaching parent element */
+      this.props.dispatcher.dispatch(new sharedActions.DeclineCall());
+      // XXX really?
       return false;
     },
 
-    /*
+    _handleDeclineBlock: function(e) {
+      this.props.dispatcher.dispatch(new sharedActions.BlockCall());
+      /* Prevent event propagation
+       * stop the click from reaching parent element */
+      // XXX really?
+      return false;
+    },
+
+    /**
      * Generate props for <AcceptCallButton> component based on
      * incoming call type. An incoming video call will render a video
      * answer button primarily, an audio call will flip them.
-     **/
+     */
     _answerModeProps: function() {
       var videoButton = {
         handler: this._handleAccept("audio-video"),
@@ -233,7 +253,7 @@ loop.conversationViews = (function(mozL10n) {
       props.secondary = audioButton;
 
       // When video is not enabled on this call, we swap the buttons around.
-      if (!this.props.video) {
+      if (!this.props.incomingHasVideo) {
         audioButton.className = "fx-embedded-btn-icon-audio";
         videoButton.className = "fx-embedded-btn-video-small";
         props.primary = audioButton;
@@ -243,19 +263,34 @@ loop.conversationViews = (function(mozL10n) {
       return props;
     },
 
+    /**
+     * Used to remove the scheme from a url.
+     *
+     * @param {String} url  The url to remove the scheme from.
+     */
+    _removeScheme: function(url) {
+      if (!url) {
+        return "";
+      }
+      return url.replace(/^https?:\/\//, "");
+    },
+
     render: function() {
       /* jshint ignore:start */
       var dropdownMenuClassesDecline = React.addons.classSet({
         "native-dropdown-menu": true,
         "conversation-window-dropdown": true,
-        "visually-hidden": !this.state.showMenu
+        "visually-hidden": !this.props.showMenu
       });
+console.log(this.props);
+      var peerIdentifier = this.props.callerId ||
+        this._removeScheme(this.props.callUrl);
 
       return (
         React.DOM.div({className: "call-window"}, 
-          CallIdentifierView({video: this.props.video, 
-            peerIdentifier: this.props.model.getCallIdentifier(), 
-            urlCreationDate: this.props.model.get("urlCreationDate"), 
+          CallIdentifierView({video: this.props.incomingHasVideo, 
+            peerIdentifier: peerIdentifier, 
+            urlCreationDate: this.props.urlCreationDate, 
             showIcons: true}), 
 
           React.DOM.div({className: "btn-group call-action-group"}, 
@@ -624,10 +659,11 @@ loop.conversationViews = (function(mozL10n) {
   });
 
   /**
-   * Master View Controller for outgoing calls. This manages
+   * Master View Controller for calls. This manages
    * the different views that need displaying.
    */
-  var OutgoingConversationView = React.createClass({displayName: 'OutgoingConversationView',
+// XXX Check Titles
+  var ConversationView = React.createClass({displayName: 'ConversationView',
     mixins: [
       sharedMixins.AudioMixin,
       Backbone.Events
@@ -635,6 +671,7 @@ loop.conversationViews = (function(mozL10n) {
 
     propTypes: {
       dispatcher: React.PropTypes.instanceOf(loop.Dispatcher).isRequired,
+      mozLoop: React.PropTypes.object.isRequired,
       store: React.PropTypes.instanceOf(
         loop.store.ConversationStore).isRequired,
       feedbackStore: React.PropTypes.instanceOf(loop.store.FeedbackStore)
@@ -682,6 +719,38 @@ loop.conversationViews = (function(mozL10n) {
       );
     },
 
+    _renderViewFromCallType: function() {
+      if (this.state.outgoing) {
+        return (PendingConversationView({
+          dispatcher: this.props.dispatcher, 
+          callState: this.state.callState, 
+          contact: this.state.contact, 
+          enableCancelButton: this._isCancellable()}
+        ));
+      }
+
+      // Otherwise Incoming
+      switch (this.state.callState) {
+        case CALL_STATES.ALERTING: {
+          // XXX Is callType right?
+          return (IncomingCallView({
+            dispatcher: this.props.dispatcher, 
+            mozLoop: this.props.mozLoop, 
+            video: this.state.callType, 
+            callerId: this.state.callerId, 
+            callUrl: this.state.callUrl, 
+            urlCreationDate: this.state.urlCreationDate}
+          ));
+        }
+        // i.e. gathering or connecting
+        default:  {
+          // We've not connected yet, so don't give the user
+          // the choice.
+          return null;
+        }
+      };
+    },
+
     render: function() {
       switch (this.state.callState) {
         case CALL_STATES.CLOSE: {
@@ -712,12 +781,7 @@ loop.conversationViews = (function(mozL10n) {
           return null;
         }
         default: {
-          return (PendingConversationView({
-            dispatcher: this.props.dispatcher, 
-            callState: this.state.callState, 
-            contact: this.state.contact, 
-            enableCancelButton: this._isCancellable()}
-          ));
+          return this._renderViewFromCallType();
         }
       }
     },
@@ -731,7 +795,7 @@ loop.conversationViews = (function(mozL10n) {
     GenericFailureView: GenericFailureView,
     IncomingCallView: IncomingCallView,
     OngoingConversationView: OngoingConversationView,
-    OutgoingConversationView: OutgoingConversationView
+    ConversationView: ConversationView
   };
 
 })(document.mozL10n || navigator.mozL10n);

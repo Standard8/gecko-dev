@@ -7,6 +7,7 @@
 var loop = loop || {};
 loop.store = loop.store || {};
 
+// XXX release call data for incoming?
 (function() {
   var sharedActions = loop.shared.actions;
   var CALL_TYPES = loop.shared.utils.CALL_TYPES;
@@ -214,6 +215,8 @@ loop.store = loop.store || {};
         "connectionFailure",
         "connectionProgress",
         "acceptCall",
+        "declineCall",
+        "blockCall",
         "connectCall",
         "hangupCall",
         "remotePeerDisconnected",
@@ -226,7 +229,7 @@ loop.store = loop.store || {};
 
       var websocketToken = actionData.websocketToken &&
         actionData.websocketToken.toString(16);
-
+console.log(actionData);
       this.setStoreState({
         contact: actionData.contact,
         outgoing: windowType === "outgoing",
@@ -259,14 +262,39 @@ loop.store = loop.store || {};
     /**
      * Handles the accept call action, accepts the call which starts the
      * connection process.
+     *
+     * @param {sharedActions.AcceptCall} actionData
      */
-    acceptCall: function() {
+    acceptCall: function(actionData) {
       if (this.getStoreState("outgoing")) {
         console.error("Received AcceptCall action in outgoing state");
         return;
       }
 
+      this.setStoreState({
+        callType: actionData.callType,
+        videoMuted: actionData.callType === CALL_TYPES.AUDIO_ONLY
+      });
+
       this._websocket.accept();
+    },
+
+    /**
+     * Handles the decline call actions, declines the call and sets
+     * the call state to `CLOSE`.
+     *
+     * @param {sharedActions.DeclineCall} actionData
+     */
+    declineCall: function() {
+      this._websocket.decline();
+
+      this.setStoreState({
+        callState: CALL_STATES.CLOSE
+      });
+    },
+
+    blockCall: function() {
+      // XXX
     },
 
     /**

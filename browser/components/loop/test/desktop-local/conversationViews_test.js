@@ -11,6 +11,7 @@ describe("loop.conversationViews", function () {
   var fakeMozLoop;
 
   var CALL_STATES = loop.store.CALL_STATES;
+  var CALL_TYPES = loop.shared.utils.CALL_TYPES;
 
   beforeEach(function() {
     sandbox = sinon.sandbox.create();
@@ -56,7 +57,9 @@ describe("loop.conversationViews", function () {
       },
       getAudioBlob: sinon.spy(function(name, callback) {
         callback(null, new Blob([new ArrayBuffer(10)], {type: "audio/ogg"}));
-      })
+      }),
+      startAlerting: sinon.stub(),
+      stopAlerting: sinon.stub()
     };
   });
 
@@ -445,13 +448,14 @@ describe("loop.conversationViews", function () {
     });
   });
 
-  describe("OutgoingConversationView", function() {
+  describe("ConversationView", function() {
     var store, feedbackStore;
 
     function mountTestComponent() {
       return TestUtils.renderIntoDocument(
-        loop.conversationViews.OutgoingConversationView({
+        loop.conversationViews.ConversationView({
           dispatcher: dispatcher,
+          mozLoop: fakeMozLoop,
           store: store,
           feedbackStore: feedbackStore
         }));
@@ -478,17 +482,32 @@ describe("loop.conversationViews", function () {
           loop.conversationViews.CallFailedView);
     });
 
-    it("should render the PendingConversationView when the call state is 'gather'",
-      function() {
+    it("should render the PendingConversationView when the call state is " +
+       "'gather' and the call is outgoing", function() {
         store.setStoreState({
           callState: CALL_STATES.GATHER,
-          contact: contact
+          contact: contact,
+          outgoing: true
         });
 
         view = mountTestComponent();
 
         TestUtils.findRenderedComponentWithType(view,
           loop.conversationViews.PendingConversationView);
+    });
+
+    it("should render the IncomingCallView when the call state is " +
+       "'alerting' and the call is incoming", function() {
+        store.setStoreState({
+          callState: CALL_STATES.ALERTING,
+          contact: contact,
+          outgoing: false
+        });
+
+        view = mountTestComponent();
+
+        TestUtils.findRenderedComponentWithType(view,
+          loop.conversationViews.IncomingCallView);
     });
 
     it("should render the OngoingConversationView when the call state is 'ongoing'",
@@ -531,7 +550,8 @@ describe("loop.conversationViews", function () {
       function() {
         store.setStoreState({
           callState: CALL_STATES.GATHER,
-          contact: contact
+          contact: contact,
+          outgoing: true
         });
 
         view = mountTestComponent();
@@ -547,35 +567,31 @@ describe("loop.conversationViews", function () {
   });
 
   describe("IncomingCallView", function() {
-    var view, model, fakeAudio;
+    var store, fakeAudio;
+
+    function mountTestComponent(extraProps) {
+      return TestUtils.renderIntoDocument(
+        loop.conversationViews.IncomingCallView(_.extend({
+          dispatcher: dispatcher,
+          mozLoop: fakeMozLoop
+        }, extraProps)));
+    }
 
     beforeEach(function() {
-      var Model = Backbone.Model.extend({
-        getCallIdentifier: function() {return "fakeId";}
-      });
-      model = new Model();
-      sandbox.spy(model, "trigger");
-      sandbox.stub(model, "set");
-
       fakeAudio = {
         play: sinon.spy(),
         pause: sinon.spy(),
         removeAttribute: sinon.spy()
       };
       sandbox.stub(window, "Audio").returns(fakeAudio);
-
-      view = TestUtils.renderIntoDocument(loop.conversationViews.IncomingCallView({
-        model: model,
-        video: true
-      }));
     });
 
     describe("default answer mode", function() {
       it("should display video as primary answer mode", function() {
-        view = TestUtils.renderIntoDocument(loop.conversationViews.IncomingCallView({
-          model: model,
-          video: true
-        }));
+        view = mountTestComponent({
+          incomingHasVideo: true
+        });
+
         var primaryBtn = view.getDOMNode()
                                   .querySelector('.fx-embedded-btn-icon-video');
 
@@ -583,10 +599,10 @@ describe("loop.conversationViews", function () {
       });
 
       it("should display audio as primary answer mode", function() {
-        view = TestUtils.renderIntoDocument(loop.conversationViews.IncomingCallView({
-          model: model,
-          video: false
-        }));
+        view = mountTestComponent({
+          incomingHasVideo: false
+        });
+
         var primaryBtn = view.getDOMNode()
                                   .querySelector('.fx-embedded-btn-icon-audio');
 
@@ -594,112 +610,91 @@ describe("loop.conversationViews", function () {
       });
 
       it("should accept call with video", function() {
-        view = TestUtils.renderIntoDocument(loop.conversationViews.IncomingCallView({
-          model: model,
-          video: true
-        }));
+        view = mountTestComponent({
+          incomingHasVideo: true
+        });
+
         var primaryBtn = view.getDOMNode()
                                   .querySelector('.fx-embedded-btn-icon-video');
 
         React.addons.TestUtils.Simulate.click(primaryBtn);
 
-        sinon.assert.calledOnce(model.set);
-        sinon.assert.calledWithExactly(model.set, "selectedCallType", "audio-video");
-        sinon.assert.calledOnce(model.trigger);
-        sinon.assert.calledWithExactly(model.trigger, "accept");
+        sinon.assert.calledOnce(dispatcher.dispatch);
+        sinon.assert.calledWithExactly(dispatcher.dispatch,
+          new sharedActions.AcceptCall({callType: CALL_TYPES.AUDIO_VIDEO}));
       });
 
       it("should accept call with audio", function() {
-        view = TestUtils.renderIntoDocument(loop.conversationViews.IncomingCallView({
-          model: model,
-          video: false
-        }));
+        view = mountTestComponent({
+          incomingHasVideo: false
+        });
+
         var primaryBtn = view.getDOMNode()
                                   .querySelector('.fx-embedded-btn-icon-audio');
 
         React.addons.TestUtils.Simulate.click(primaryBtn);
 
-        sinon.assert.calledOnce(model.set);
-        sinon.assert.calledWithExactly(model.set, "selectedCallType", "audio");
-        sinon.assert.calledOnce(model.trigger);
-        sinon.assert.calledWithExactly(model.trigger, "accept");
+        sinon.assert.calledOnce(dispatcher.dispatch);
+        sinon.assert.calledWithExactly(dispatcher.dispatch,
+          new sharedActions.AcceptCall({callType: CALL_TYPES.AUDIO_ONLY}));
       });
 
       it("should accept call with video when clicking on secondary btn",
-         function() {
-           view = TestUtils.renderIntoDocument(loop.conversationViews.IncomingCallView({
-             model: model,
-             video: false
-           }));
-           var secondaryBtn = view.getDOMNode()
-           .querySelector('.fx-embedded-btn-video-small');
+        function() {
+          view = mountTestComponent({
+            incomingHasVideo: false
+          });
 
-           React.addons.TestUtils.Simulate.click(secondaryBtn);
+          var secondaryBtn = view.getDOMNode()
+            .querySelector('.fx-embedded-btn-video-small');
 
-           sinon.assert.calledOnce(model.set);
-           sinon.assert.calledWithExactly(model.set, "selectedCallType", "audio-video");
-           sinon.assert.calledOnce(model.trigger);
-           sinon.assert.calledWithExactly(model.trigger, "accept");
-         });
+          React.addons.TestUtils.Simulate.click(secondaryBtn);
+
+          sinon.assert.calledOnce(dispatcher.dispatch);
+          sinon.assert.calledWithExactly(dispatcher.dispatch,
+            new sharedActions.AcceptCall({callType: CALL_TYPES.AUDIO_VIDEO}));
+        });
 
       it("should accept call with audio when clicking on secondary btn",
-         function() {
-           view = TestUtils.renderIntoDocument(loop.conversationViews.IncomingCallView({
-             model: model,
-             video: true
-           }));
-           var secondaryBtn = view.getDOMNode()
-           .querySelector('.fx-embedded-btn-audio-small');
+        function() {
+          view = mountTestComponent({
+            incomingHasVideo: true
+          });
 
-           React.addons.TestUtils.Simulate.click(secondaryBtn);
+          var secondaryBtn = view.getDOMNode()
+            .querySelector('.fx-embedded-btn-audio-small');
 
-           sinon.assert.calledOnce(model.set);
-           sinon.assert.calledWithExactly(model.set, "selectedCallType", "audio");
-           sinon.assert.calledOnce(model.trigger);
-           sinon.assert.calledWithExactly(model.trigger, "accept");
-         });
-    });
+          React.addons.TestUtils.Simulate.click(secondaryBtn);
 
-    describe("click event on .btn-accept", function() {
-      it("should trigger an 'accept' conversation model event", function () {
-        var buttonAccept = view.getDOMNode().querySelector(".btn-accept");
-        model.trigger.withArgs("accept");
-        TestUtils.Simulate.click(buttonAccept);
-
-        /* Setting a model property triggers 2 events */
-        sinon.assert.calledOnce(model.trigger.withArgs("accept"));
-      });
-
-      it("should set selectedCallType to audio-video", function () {
-        var buttonAccept = view.getDOMNode().querySelector(".btn-accept");
-
-        TestUtils.Simulate.click(buttonAccept);
-
-        sinon.assert.calledOnce(model.set);
-        sinon.assert.calledWithExactly(model.set, "selectedCallType",
-          "audio-video");
-      });
-    });
-
-    describe("click event on .btn-decline", function() {
-      it("should trigger an 'decline' conversation model event", function() {
-        var buttonDecline = view.getDOMNode().querySelector(".btn-decline");
-
-        TestUtils.Simulate.click(buttonDecline);
-
-        sinon.assert.calledOnce(model.trigger);
-        sinon.assert.calledWith(model.trigger, "decline");
+          sinon.assert.calledOnce(dispatcher.dispatch);
+          sinon.assert.calledWithExactly(dispatcher.dispatch,
+            new sharedActions.AcceptCall({callType: CALL_TYPES.AUDIO_ONLY}));
         });
-    });
 
-    describe("click event on .btn-block", function() {
-      it("should trigger a 'block' conversation model event", function() {
-        var buttonBlock = view.getDOMNode().querySelector(".btn-block");
+      it("should dispatch `DeclineCall` when clicking the decline btn",
+        function() {
+          view = mountTestComponent();
 
-        TestUtils.Simulate.click(buttonBlock);
+          var buttonDecline = view.getDOMNode().querySelector(".btn-decline");
 
-        sinon.assert.calledOnce(model.trigger);
-        sinon.assert.calledWith(model.trigger, "declineAndBlock");
+          TestUtils.Simulate.click(buttonDecline);
+
+          sinon.assert.calledOnce(dispatcher.dispatch);
+          sinon.assert.calledWithExactly(dispatcher.dispatch,
+            new sharedActions.DeclineCall());
+        });
+
+      it("should dispatch `BlockCall` when clicking the block btn",
+        function() {
+          view = mountTestComponent();
+
+          var buttonDecline = view.getDOMNode().querySelector(".btn-block");
+
+          TestUtils.Simulate.click(buttonDecline);
+
+          sinon.assert.calledOnce(dispatcher.dispatch);
+          sinon.assert.calledWithExactly(dispatcher.dispatch,
+            new sharedActions.BlockCall());
       });
     });
   });

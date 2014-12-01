@@ -91,6 +91,7 @@
 
   var mockSDK = {};
 
+  var mockDate = (new Date() / 1000).toString();
   var mockConversationModel = new loop.shared.models.ConversationModel({
     callerId: "Mrs Jones",
     urlCreationDate: (new Date() / 1000).toString()
@@ -259,15 +260,18 @@
           Section({name: "IncomingCallView"}, 
             Example({summary: "Default / incoming video call", dashed: "true", style: {width: "260px", height: "254px"}}, 
               React.DOM.div({className: "fx-embedded"}, 
-                IncomingCallView({model: mockConversationModel, 
-                                  video: true})
+                IncomingCallView({dispatcher: dispatcher, 
+                                  callerId: "Mrs Jones", 
+                                  urlCreationDate: mockDate})
               )
             ), 
 
             Example({summary: "Default / incoming audio only call", dashed: "true", style: {width: "260px", height: "254px"}}, 
               React.DOM.div({className: "fx-embedded"}, 
-                IncomingCallView({model: mockConversationModel, 
-                                  video: false})
+                IncomingCallView({dispatcher: dispatcher, 
+                                  callerId: "Mrs Jones", 
+                                  urlCreationDate: mockDate, 
+                                  incomingHasVideo: false})
               )
             )
           ), 
@@ -275,8 +279,10 @@
           Section({name: "IncomingCallView-ActiveState"}, 
             Example({summary: "Default", dashed: "true", style: {width: "260px", height: "254px"}}, 
               React.DOM.div({className: "fx-embedded"}, 
-                IncomingCallView({model: mockConversationModel, 
-                                   showMenu: true})
+                IncomingCallView({dispatcher: dispatcher, 
+                                  callerId: "Mrs Jones", 
+                                  urlCreationDate: mockDate, 
+                                  showMenu: true})
               )
             )
           ), 
