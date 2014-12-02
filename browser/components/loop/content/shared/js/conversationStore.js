@@ -179,16 +179,9 @@ loop.store = loop.store || {};
           break;
         }
         case WS_STATES.CONNECTING: {
-          this.sdkDriver.connectSession({
-            apiKey: state.apiKey,
-            sessionId: state.sessionId,
-            sessionToken: state.sessionToken
-          });
-          this.mozLoop.addConversationContext(
-            state.windowId,
-            state.sessionId,
-            state.callId);
-          this.setStoreState({callState: CALL_STATES.ONGOING});
+          if (this.getStoreState("outgoing")) {
+            this._connectConversation();
+          }
           break;
         }
         case WS_STATES.HALF_CONNECTED:
@@ -229,7 +222,7 @@ loop.store = loop.store || {};
 
       var websocketToken = actionData.websocketToken &&
         actionData.websocketToken.toString(16);
-console.log(actionData);
+
       this.setStoreState({
         contact: actionData.contact,
         outgoing: windowType === "outgoing",
@@ -277,6 +270,8 @@ console.log(actionData);
       });
 
       this._websocket.accept();
+
+      this._connectConversation();
     },
 
     /**
@@ -456,12 +451,29 @@ console.log(actionData);
     /**
      * Sets up an incoming call.
      *
-     * All we really need to do here
-     * is connect the websocket, as we've already got all the
-     * information when the window opened.
+     * All we really need to do here is connect the websocket, as we'v
+     * already got all the information when the window opened.
      */
     _setupIncomingCall: function() {
       this._connectWebSocket();
+    },
+
+    /**
+     * Connects an incoming call.
+     */
+    _connectConversation: function() {
+      var state = this.getStoreState();
+
+      this.sdkDriver.connectSession({
+        apiKey: state.apiKey,
+        sessionId: state.sessionId,
+        sessionToken: state.sessionToken
+      });
+      this.mozLoop.addConversationContext(
+        state.windowId,
+        state.sessionId,
+        state.callId);
+      this.setStoreState({callState: CALL_STATES.ONGOING});
     },
 
     /**

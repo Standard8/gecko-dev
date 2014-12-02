@@ -204,7 +204,10 @@ describe("loop.store.ConversationStore", function () {
 
     describe("progress: connecting", function() {
       beforeEach(function() {
-        store.setStoreState({callState: CALL_STATES.ALERTING});
+        store.setStoreState({
+          callState: CALL_STATES.ALERTING,
+          outgoing: true
+        });
       });
 
       it("should change the state to 'ongoing'", function() {
@@ -237,6 +240,17 @@ describe("loop.store.ConversationStore", function () {
         sinon.assert.calledOnce(fakeMozLoop.addConversationContext);
         sinon.assert.calledWithExactly(fakeMozLoop.addConversationContext,
                                        "28", "321456", "142536");
+      });
+
+      it("should not do anything for incoming calls", function() {
+        store.setStoreState({outgoing: false});
+
+        store.connectionProgress(
+          new sharedActions.ConnectionProgress({wsState: WS_STATES.CONNECTING}));
+
+        expect(store.getStoreState("callState")).eql(CALL_STATES.ALERTING);
+        sinon.assert.notCalled(sdkDriver.connectSession);
+        sinon.assert.notCalled(fakeMozLoop.addConversationContext);
       });
     });
   });
@@ -485,11 +499,14 @@ describe("loop.store.ConversationStore", function () {
     beforeEach(function() {
       store._websocket = fakeWebsocket;
       sandbox.stub(console, "error");
+
+      store.setStoreState({
+        callState: CALL_STATES.ALERTING,
+        outgoing: false
+      });
     });
 
     it("should call `accept` on the websocket for incoming calls", function() {
-      store.setStoreState({outgoing: false});
-
       store.acceptCall(
         new sharedActions.AcceptCall({
           callType: CALL_TYPES.AUDIO_ONLY
@@ -498,7 +515,45 @@ describe("loop.store.ConversationStore", function () {
       sinon.assert.calledOnce(wsAcceptSpy);
     });
 
-    it("should not call `accept` for outgoing calls", function() {
+    it("should change the state to 'ongoing'", function() {
+      store.acceptCall(
+        new sharedActions.AcceptCall({
+          callType: CALL_TYPES.AUDIO_ONLY
+        }));
+
+      expect(store.getStoreState("callState")).eql(CALL_STATES.ONGOING);
+    });
+
+    it("should connect the session", function() {
+      store.setStoreState(fakeSessionData);
+
+      store.acceptCall(
+        new sharedActions.AcceptCall({
+          callType: CALL_TYPES.AUDIO_ONLY
+        }));
+
+      sinon.assert.calledOnce(sdkDriver.connectSession);
+      sinon.assert.calledWithExactly(sdkDriver.connectSession, {
+        apiKey: "fakeKey",
+        sessionId: "321456",
+        sessionToken: "341256"
+      });
+    });
+
+    it("should call mozLoop.addConversationContext", function() {
+      store.setStoreState(fakeSessionData);
+
+      store.acceptCall(
+        new sharedActions.AcceptCall({
+          callType: CALL_TYPES.AUDIO_ONLY
+        }));
+
+      sinon.assert.calledOnce(fakeMozLoop.addConversationContext);
+      sinon.assert.calledWithExactly(fakeMozLoop.addConversationContext,
+                                     "28", "321456", "142536");
+    });
+
+    it("should not do anything for outgoing calls", function() {
       store.setStoreState({outgoing: true});
 
       store.acceptCall(
@@ -506,6 +561,9 @@ describe("loop.store.ConversationStore", function () {
           callType: CALL_TYPES.AUDIO_ONLY
         }));
 
+      expect(store.getStoreState("callState")).eql(CALL_STATES.ALERTING);
+      sinon.assert.notCalled(sdkDriver.connectSession);
+      sinon.assert.notCalled(fakeMozLoop.addConversationContext);
       sinon.assert.notCalled(wsAcceptSpy);
     });
   });
