@@ -18,7 +18,11 @@ describe("loop.roomViews", function () {
       document: {},
       navigator: {
         mozLoop: {
-          getAudioBlob: sinon.stub()
+          getAudioBlob: sinon.spy(function(name, callback) {
+            callback(null, new Blob([new ArrayBuffer(10)], {
+              type: "audio/ogg"
+            }));
+          })
         }
       }
     };
@@ -316,7 +320,7 @@ describe("loop.roomViews", function () {
           view = mountTestComponent();
 
           TestUtils.findRenderedComponentWithType(view,
-            loop.conversationViews.GenericFailureView);
+            loop.roomViews.GenericFailureView);
         });
 
       it("should render the GenericFailureView if the roomState is `FULL`",
@@ -326,7 +330,7 @@ describe("loop.roomViews", function () {
           view = mountTestComponent();
 
           TestUtils.findRenderedComponentWithType(view,
-            loop.conversationViews.GenericFailureView);
+            loop.roomViews.GenericFailureView);
         });
 
       it("should render the DesktopRoomInvitationView if roomState is `JOINED`",
@@ -374,5 +378,35 @@ describe("loop.roomViews", function () {
             .not.eql(null);
         });
     });
+  });
+
+  describe("GenericFailureView", function() {
+    var view, fakeAudio;
+
+    beforeEach(function() {
+      fakeAudio = {
+        play: sinon.spy(),
+        pause: sinon.spy(),
+        removeAttribute: sinon.spy()
+      };
+      sandbox.stub(window, "Audio").returns(fakeAudio);
+
+      fakeWindow.navigator.mozLoop.doNotDisturb = false;
+
+      view = TestUtils.renderIntoDocument(
+        loop.roomViews.GenericFailureView({
+          cancelCall: function() {}
+        })
+      );
+    });
+
+    it("should play a failure sound, once", function() {
+      sinon.assert.calledOnce(fakeWindow.navigator.mozLoop.getAudioBlob);
+      sinon.assert.calledWithExactly(fakeWindow.navigator.mozLoop.getAudioBlob,
+                                     "failure", sinon.match.func);
+      sinon.assert.calledOnce(fakeAudio.play);
+      expect(fakeAudio.loop).to.equal(false);
+    });
+
   });
 });

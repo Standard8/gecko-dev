@@ -7,7 +7,6 @@
 var loop = loop || {};
 loop.store = loop.store || {};
 
-// XXX release call data for incoming?
 (function() {
   var sharedActions = loop.shared.actions;
   var CALL_TYPES = loop.shared.utils.CALL_TYPES;
@@ -53,6 +52,9 @@ loop.store = loop.store || {};
     // The call was terminated due to an issue during connection.
     TERMINATED: "cs-terminated"
   };
+
+  // Matches strings of the form "<nonspaces>@<nonspaces>" or "+<digits>"
+  var EMAIL_OR_PHONE_RE = /^(:?\S+@\S+|\+\d+)$/;
 
   /**
    * Conversation store.
@@ -152,8 +154,15 @@ loop.store = loop.store || {};
      */
     connectionFailure: function(actionData) {
       this._endSession();
+      var nextCallState = CALL_STATES.TERMINATED;
+
+      if (!this.getStoreState("outgoing") &&
+          actionData.reason === "cancel") {
+        nextCallState = CALL_STATES.CLOSE;
+      }
+
       this.setStoreState({
-        callState: CALL_STATES.TERMINATED,
+        callState: nextCallState,
         callStateReason: actionData.reason
       });
     },
@@ -289,7 +298,29 @@ loop.store = loop.store || {};
     },
 
     blockCall: function() {
-      // XXX
+      var state = this.getStoreState();
+      var callerId = state.callerId;
+
+      // If this is a direct call, we'll need to block the caller directly.
+      if (callerId && EMAIL_OR_PHONE_RE.test(callerId)) {
+        this.mozLoop.calls.blockDirectCaller(callerId, function(err) {
+          // XXX The conversation window will be closed when this cb is triggered
+          // figure out if there is a better way to report the error to the user
+          // (bug 1103150).
+          console.log(err.fileName + ":" + err.lineNumber + ": " + err.message);
+        });
+      } else {
+        this.client.deleteCallUrl(state.callToken,
+          state.sessionType,
+          function(error) {
+            // XXX The conversation window will be closed when this cb is triggered
+            // figure out if there is a better way to report the error to the user
+            // (bug 1048909).
+            console.log(error);
+          });
+      }
+
+      this.declineCall();
     },
 
     /**

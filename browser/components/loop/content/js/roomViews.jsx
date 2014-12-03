@@ -55,6 +55,41 @@ loop.roomViews = (function(mozL10n) {
   };
 
   /**
+   * Something went wrong view. Displayed when there's a big problem.
+   *
+   * XXX Based on CallFailedView, but built specially until we flux-ify the
+   * incoming call views (bug 1088672).
+   */
+  var GenericFailureView = React.createClass({
+    mixins: [sharedMixins.AudioMixin],
+
+    propTypes: {
+      cancelCall: React.PropTypes.func.isRequired
+    },
+
+    componentDidMount: function() {
+      this.play("failure");
+    },
+
+    render: function() {
+      document.title = mozL10n.get("generic_failure_title");
+
+      return (
+        <div className="call-window">
+          <h2>{mozL10n.get("generic_failure_title")}</h2>
+
+          <div className="btn-group call-action-group">
+            <button className="btn btn-cancel"
+                    onClick={this.props.cancelCall}>
+              {mozL10n.get("cancel_button")}
+            </button>
+          </div>
+        </div>
+      );
+    }
+  });
+
+  /**
    * Desktop room invitation view (overlay).
    */
   var DesktopRoomInvitationView = React.createClass({
@@ -265,7 +300,7 @@ loop.roomViews = (function(mozL10n) {
         case ROOM_STATES.FULL: {
           // Note: While rooms are set to hold a maximum of 2 participants, the
           //       FULL case should never happen on desktop.
-          return <loop.conversationViews.GenericFailureView
+          return <GenericFailureView
             cancelCall={this.closeWindow}
           />;
         }
@@ -304,7 +339,8 @@ loop.roomViews = (function(mozL10n) {
   return {
     ActiveRoomStoreMixin: ActiveRoomStoreMixin,
     DesktopRoomConversationView: DesktopRoomConversationView,
-    DesktopRoomInvitationView: DesktopRoomInvitationView
+    DesktopRoomInvitationView: DesktopRoomInvitationView,
+    GenericFailureView: GenericFailureView
   };
 
 })(document.mozL10n || navigator.mozL10n);

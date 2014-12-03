@@ -20,7 +20,8 @@
   // 1.2. Conversation Window
   var IncomingCallView = loop.conversationViews.IncomingCallView;
   var DesktopPendingConversationView = loop.conversationViews.PendingConversationView;
-  var CallFailedView = loop.conversationViews.CallFailedView;
+  var OutgoingCallFailedView = loop.conversationViews.OutgoingCallFailedView;
+  var IncomingCallFailedView = loop.conversationViews.IncomingCallFailedView;
   var DesktopRoomConversationView = loop.roomViews.DesktopRoomConversationView;
 
   // 2. Standalone webapp
@@ -262,6 +263,7 @@
               React.DOM.div({className: "fx-embedded"}, 
                 IncomingCallView({dispatcher: dispatcher, 
                                   callerId: "Mrs Jones", 
+                                  mozLoop: navigator.mozLoop, 
                                   urlCreationDate: mockDate})
               )
             ), 
@@ -270,19 +272,9 @@
               React.DOM.div({className: "fx-embedded"}, 
                 IncomingCallView({dispatcher: dispatcher, 
                                   callerId: "Mrs Jones", 
+                                  mozLoop: navigator.mozLoop, 
                                   urlCreationDate: mockDate, 
                                   incomingHasVideo: false})
-              )
-            )
-          ), 
-
-          Section({name: "IncomingCallView-ActiveState"}, 
-            Example({summary: "Default", dashed: "true", style: {width: "260px", height: "254px"}}, 
-              React.DOM.div({className: "fx-embedded"}, 
-                IncomingCallView({dispatcher: dispatcher, 
-                                  callerId: "Mrs Jones", 
-                                  urlCreationDate: mockDate, 
-                                  showMenu: true})
               )
             )
           ), 
@@ -362,23 +354,29 @@
                      style: {width: "260px", height: "265px"}}, 
               React.DOM.div({className: "fx-embedded"}, 
                 DesktopPendingConversationView({callState: "gather", 
-                                                contact: mockContact, 
+                                                displayName: "Brad", 
                                                 dispatcher: dispatcher})
               )
             )
           ), 
 
           Section({name: "CallFailedView"}, 
-            Example({summary: "Call Failed", dashed: "true", 
+            Example({summary: "Outgoing Call Failed", dashed: "true", 
                      style: {width: "260px", height: "265px"}}, 
               React.DOM.div({className: "fx-embedded"}, 
-                CallFailedView({dispatcher: dispatcher})
+                OutgoingCallFailedView({dispatcher: dispatcher})
               )
             ), 
-            Example({summary: "Call Failed — with call URL error", dashed: "true", 
+            Example({summary: "Outgoing Call Failed — with call URL error", dashed: "true", 
                      style: {width: "260px", height: "265px"}}, 
               React.DOM.div({className: "fx-embedded"}, 
-                CallFailedView({dispatcher: dispatcher, emailLinkError: true})
+                OutgoingCallFailedView({dispatcher: dispatcher, emailLinkError: true})
+              )
+            ), 
+            Example({summary: "Incoming Call Failed", dashed: "true", 
+                     style: {width: "260px", height: "265px"}}, 
+              React.DOM.div({className: "fx-embedded"}, 
+                IncomingCallFailedView({dispatcher: dispatcher})
               )
             )
           ), 

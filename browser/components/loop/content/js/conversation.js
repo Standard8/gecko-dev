@@ -28,7 +28,6 @@ loop.conversation = (function(mozL10n) {
     mixins: [Backbone.Events],
 
     propTypes: {
-      // XXX New types for flux style
       conversationAppStore: React.PropTypes.instanceOf(
         loop.store.ConversationAppStore).isRequired,
       conversationStore: React.PropTypes.instanceOf(loop.store.ConversationStore)
@@ -77,7 +76,9 @@ loop.conversation = (function(mozL10n) {
           ));
         }
         case "failed": {
-          return GenericFailureView({cancelCall: this.closeWindow});
+          // This should never happen unless a developer has done something
+          // wrong.
+          return React.DOM.h2(null, mozL10n.get("generic_failure_title"));
         }
         default: {
           // If we don't have a windowType, we don't know what we are yet,

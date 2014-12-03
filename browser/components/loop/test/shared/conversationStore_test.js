@@ -38,18 +38,24 @@ describe("loop.store.ConversationStore", function () {
     };
 
     fakeMozLoop = {
-      getLoopPref: sandbox.stub(),
-      addConversationContext: sandbox.stub(),
+      getLoopPref: sinon.stub(),
+      addConversationContext: sinon.stub(),
       calls: {
-        setCallInProgress: sandbox.stub(),
-        clearCallInProgress: sandbox.stub()
+        setCallInProgress: sinon.stub(),
+        clearCallInProgress: sinon.stub(),
+        blockDirectCaller: sinon.stub()
+      },
+      LOOP_SESSION_TYPE: {
+        GUEST: 1,
+        FXA: 2
       }
     };
 
     dispatcher = new loop.Dispatcher();
     client = {
       setupOutgoingCall: sinon.stub(),
-      requestCallUrl: sinon.stub()
+      requestCallUrl: sinon.stub(),
+      deleteCallUrl: sinon.stub()
     };
     sdkDriver = {
       connectSession: sinon.stub(),
@@ -150,14 +156,44 @@ describe("loop.store.ConversationStore", function () {
       sinon.assert.calledOnce(wsCloseSpy);
     });
 
-    it("should set the state to 'terminated'", function() {
-      store.setStoreState({callState: CALL_STATES.ALERTING});
+    it("should set the state to 'TERMINATED' for outgoing calls", function() {
+      store.setStoreState({
+        callState: CALL_STATES.ALERTING,
+        outgoing: true
+      });
 
       store.connectionFailure(
         new sharedActions.ConnectionFailure({reason: "fake"}));
 
       expect(store.getStoreState("callState")).eql(CALL_STATES.TERMINATED);
       expect(store.getStoreState("callStateReason")).eql("fake");
+    });
+
+    it("should set the state to 'TERMINATED' for incoming calls", function() {
+      store.setStoreState({
+        callState: CALL_STATES.ALERTING,
+        outgoing: false
+      });
+
+      store.connectionFailure(
+        new sharedActions.ConnectionFailure({reason: "fake"}));
+
+      expect(store.getStoreState("callState")).eql(CALL_STATES.TERMINATED);
+      expect(store.getStoreState("callStateReason")).eql("fake");
+    });
+
+    it("should set the state to 'CLOSE' for incoming calls if the reason " +
+      "is `cancel`", function() {
+      store.setStoreState({
+        callState: CALL_STATES.ALERTING,
+        outgoing: false
+      });
+
+      store.connectionFailure(
+        new sharedActions.ConnectionFailure({reason: "cancel"}));
+
+      expect(store.getStoreState("callState")).eql(CALL_STATES.CLOSE);
+      expect(store.getStoreState("callStateReason")).eql("cancel");
     });
 
     it("should release mozLoop callsData", function() {
@@ -591,10 +627,38 @@ describe("loop.store.ConversationStore", function () {
       store._websocket = fakeWebsocket;
     });
 
-    it("should call delete call on the client");
-    it("should get callToken from conversation model");
-    it("should trigger error handling in case of error");
-    it("should close the window");
+    it("should call delete call on the client", function() {
+      store.setStoreState({
+        callToken: "fakeToken",
+        sessionType: fakeMozLoop.LOOP_SESSION_TYPE.FXA
+      });
+
+      store.blockCall();
+
+      sinon.assert.calledOnce(client.deleteCallUrl);
+      sinon.assert.calledOnce(client.deleteCallUrl, "fakeToken",
+        fakeMozLoop.LOOP_SESSION_TYPE.FXA);
+    });
+
+    it("should blocker a direct caller", function() {
+      store.setStoreState({callerId: "test@invalid"});
+
+      store.blockCall();
+
+      sinon.assert.calledOnce(fakeMozLoop.calls.blockDirectCaller);
+    });
+
+    it("should call `decline` on the websocket", function() {
+      store.blockCall();
+
+      sinon.assert.calledOnce(wsDeclineSpy);
+    });
+
+    it("should set callState to `CLOSE`", function() {
+      store.blockCall();
+
+      expect(store.getStoreState("callState")).eql(CALL_STATES.CLOSE);
+    });
   });
 
   describe("#connectCall", function() {

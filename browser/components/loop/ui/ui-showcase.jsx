@@ -20,7 +20,8 @@
   // 1.2. Conversation Window
   var IncomingCallView = loop.conversationViews.IncomingCallView;
   var DesktopPendingConversationView = loop.conversationViews.PendingConversationView;
-  var CallFailedView = loop.conversationViews.CallFailedView;
+  var OutgoingCallFailedView = loop.conversationViews.OutgoingCallFailedView;
+  var IncomingCallFailedView = loop.conversationViews.IncomingCallFailedView;
   var DesktopRoomConversationView = loop.roomViews.DesktopRoomConversationView;
 
   // 2. Standalone webapp
@@ -262,6 +263,7 @@
               <div className="fx-embedded">
                 <IncomingCallView dispatcher={dispatcher}
                                   callerId={"Mrs Jones"}
+                                  mozLoop={navigator.mozLoop}
                                   urlCreationDate={mockDate} />
               </div>
             </Example>
@@ -270,19 +272,9 @@
               <div className="fx-embedded">
                 <IncomingCallView dispatcher={dispatcher}
                                   callerId={"Mrs Jones"}
+                                  mozLoop={navigator.mozLoop}
                                   urlCreationDate={mockDate}
                                   incomingHasVideo={false} />
-              </div>
-            </Example>
-          </Section>
-
-          <Section name="IncomingCallView-ActiveState">
-            <Example summary="Default" dashed="true" style={{width: "260px", height: "254px"}}>
-              <div className="fx-embedded" >
-                <IncomingCallView dispatcher={dispatcher}
-                                  callerId={"Mrs Jones"}
-                                  urlCreationDate={mockDate}
-                                  showMenu={true} />
               </div>
             </Example>
           </Section>
@@ -361,24 +353,30 @@
             <Example summary="Connecting" dashed="true"
                      style={{width: "260px", height: "265px"}}>
               <div className="fx-embedded">
-                <DesktopPendingConversationView callState={"gather"}
-                                                contact={mockContact}
+                <DesktopPendingConversationView callState="gather"
+                                                displayName="Brad"
                                                 dispatcher={dispatcher} />
               </div>
             </Example>
           </Section>
 
           <Section name="CallFailedView">
-            <Example summary="Call Failed" dashed="true"
+            <Example summary="Outgoing Call Failed" dashed="true"
                      style={{width: "260px", height: "265px"}}>
               <div className="fx-embedded">
-                <CallFailedView dispatcher={dispatcher} />
+                <OutgoingCallFailedView dispatcher={dispatcher} />
               </div>
             </Example>
-            <Example summary="Call Failed — with call URL error" dashed="true"
+            <Example summary="Outgoing Call Failed — with call URL error" dashed="true"
                      style={{width: "260px", height: "265px"}}>
               <div className="fx-embedded">
-                <CallFailedView dispatcher={dispatcher} emailLinkError={true} />
+                <OutgoingCallFailedView dispatcher={dispatcher} emailLinkError={true} />
+              </div>
+            </Example>
+            <Example summary="Incoming Call Failed" dashed="true"
+                     style={{width: "260px", height: "265px"}}>
+              <div className="fx-embedded">
+                <IncomingCallFailedView dispatcher={dispatcher} />
               </div>
             </Example>
           </Section>

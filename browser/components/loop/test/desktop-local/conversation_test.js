@@ -217,13 +217,12 @@ describe("loop.conversation", function() {
         loop.roomViews.DesktopRoomConversationView);
     });
 
-    it("should display the GenericFailureView for failures", function() {
+    it("should display a message for failures", function() {
       conversationAppStore.setStoreState({windowType: "failed"});
 
       ccView = mountTestComponent();
 
-      TestUtils.findRenderedComponentWithType(ccView,
-        loop.conversationViews.GenericFailureView);
+      TestUtils.findRenderedDOMComponentWithTag(ccView, "h2");
     });
   });
 });

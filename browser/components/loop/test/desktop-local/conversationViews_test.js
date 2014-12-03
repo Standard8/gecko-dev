@@ -8,7 +8,7 @@ describe("loop.conversationViews", function () {
 
   var sharedUtils = loop.shared.utils;
   var sandbox, oldTitle, view, dispatcher, contact, fakeAudioXHR;
-  var fakeMozLoop;
+  var fakeMozLoop, fakeWindow;
 
   var CALL_STATES = loop.store.CALL_STATES;
   var CALL_TYPES = loop.shared.utils.CALL_TYPES;
@@ -45,7 +45,7 @@ describe("loop.conversationViews", function () {
       onload: null
     };
 
-    fakeMozLoop = navigator.mozLoop = {
+    fakeMozLoop = {
       getLoopPref: sinon.stub().returns("http://fakeurl"),
       composeEmail: sinon.spy(),
       get appVersionInfo() {
@@ -61,13 +61,21 @@ describe("loop.conversationViews", function () {
       startAlerting: sinon.stub(),
       stopAlerting: sinon.stub()
     };
+
+    fakeWindow = {
+      document: {},
+      navigator: {
+        mozLoop: fakeMozLoop
+      }
+    };
+    loop.shared.mixins.setRootObject(fakeWindow);
   });
 
   afterEach(function() {
     document.title = oldTitle;
     view = undefined;
-    delete navigator.mozLoop;
     sandbox.restore();
+    loop.shared.mixins.setRootObject(window);
   });
 
   describe("CallIdentifierView", function() {
@@ -129,28 +137,6 @@ describe("loop.conversationViews", function () {
       expect(TestUtils.findRenderedDOMComponentWithClass(
         view, "fx-embedded-tiny-video-icon").props.className).to.contain("muted");
     });
-  });
-
-  describe("ConversationDetailView", function() {
-    function mountTestComponent(props) {
-      return TestUtils.renderIntoDocument(
-        loop.conversationViews.ConversationDetailView(props));
-    }
-
-    it("should set the document title to the calledId", function() {
-      mountTestComponent({contact: contact});
-
-      expect(document.title).eql("mrsmith");
-    });
-
-    it("should fallback to the email if the contact name is not defined",
-      function() {
-        delete contact.name;
-
-        mountTestComponent({contact: contact});
-
-        expect(document.title).eql("fakeEmail");
-      });
   });
 
   describe("PendingConversationView", function() {
@@ -233,12 +219,12 @@ describe("loop.conversationViews", function () {
       });
   });
 
-  describe("CallFailedView", function() {
+  describe("OutgoingCallFailedView", function() {
     var store, fakeAudio;
 
     function mountTestComponent(props) {
       return TestUtils.renderIntoDocument(
-        loop.conversationViews.CallFailedView({
+        loop.conversationViews.OutgoingCallFailedView({
           dispatcher: dispatcher,
           store: store,
           contact: {email: [{value: "test@test.tld"}]}
@@ -248,7 +234,7 @@ describe("loop.conversationViews", function () {
     beforeEach(function() {
       store = new loop.store.ConversationStore(dispatcher, {
         client: {},
-        mozLoop: navigator.mozLoop,
+        mozLoop: fakeMozLoop,
         sdkDriver: {}
       });
       fakeAudio = {
@@ -348,8 +334,58 @@ describe("loop.conversationViews", function () {
     it("should play a failure sound, once", function() {
       view = mountTestComponent();
 
-      sinon.assert.calledOnce(navigator.mozLoop.getAudioBlob);
-      sinon.assert.calledWithExactly(navigator.mozLoop.getAudioBlob,
+      sinon.assert.calledOnce(fakeMozLoop.getAudioBlob);
+      sinon.assert.calledWithExactly(fakeMozLoop.getAudioBlob,
+                                     "failure", sinon.match.func);
+      sinon.assert.calledOnce(fakeAudio.play);
+      expect(fakeAudio.loop).to.equal(false);
+    });
+  });
+
+  describe("IncomingCallFailedView", function() {
+    var store, fakeAudio;
+
+    function mountTestComponent(props) {
+      return TestUtils.renderIntoDocument(
+        loop.conversationViews.IncomingCallFailedView({
+          dispatcher: dispatcher,
+          store: store,
+          contact: {email: [{value: "test@test.tld"}]}
+        }));
+    }
+
+    beforeEach(function() {
+      store = new loop.store.ConversationStore(dispatcher, {
+        client: {},
+        mozLoop: fakeMozLoop,
+        sdkDriver: {}
+      });
+      fakeAudio = {
+        play: sinon.spy(),
+        pause: sinon.spy(),
+        removeAttribute: sinon.spy()
+      };
+      sandbox.stub(window, "Audio").returns(fakeAudio);
+    });
+
+    it("should dispatch a cancelCall action when the cancel button is pressed",
+      function() {
+        view = mountTestComponent();
+
+        var cancelBtn = view.getDOMNode().querySelector('.btn-cancel');
+
+        React.addons.TestUtils.Simulate.click(cancelBtn);
+
+        sinon.assert.calledOnce(dispatcher.dispatch);
+        sinon.assert.calledWithMatch(dispatcher.dispatch,
+          sinon.match.hasOwn("name", "cancelCall"));
+      });
+
+    it("should play a failure sound, once", function() {
+      view = mountTestComponent();
+
+      sinon.assert.calledOnce(fakeMozLoop.getAudioBlob);
+      sinon.assert.calledWithExactly(fakeMozLoop.getAudioBlob,
                                      "failure", sinon.match.func);
       sinon.assert.calledOnce(fakeAudio.play);
       expect(fakeAudio.loop).to.equal(false);
@@ -472,14 +508,32 @@ describe("loop.conversationViews", function () {
       });
     });
 
-    it("should render the CallFailedView when the call state is 'terminated'",
+    it("should render the OutgoingCallFailedView when the call state is" +
+       "'terminated' for outgoing calls",
       function() {
-        store.setStoreState({callState: CALL_STATES.TERMINATED});
+        store.setStoreState({
+          callState: CALL_STATES.TERMINATED,
+          outgoing: true
+        });
 
         view = mountTestComponent();
 
         TestUtils.findRenderedComponentWithType(view,
-          loop.conversationViews.CallFailedView);
+          loop.conversationViews.OutgoingCallFailedView);
+    });
+
+    it("should render the IncomingCallFailedView when the call state is" +
+       "'terminated' for incoming calls",
+      function() {
+        store.setStoreState({
+          callState: CALL_STATES.TERMINATED,
+          outgoing: false
+        });
+
+        view = mountTestComponent();
+
+        TestUtils.findRenderedComponentWithType(view,
+          loop.conversationViews.IncomingCallFailedView);
     });
 
     it("should render the PendingConversationView when the call state is " +
@@ -562,7 +616,57 @@ describe("loop.conversationViews", function () {
         store.setStoreState({callState: CALL_STATES.TERMINATED});
 
         TestUtils.findRenderedComponentWithType(view,
-          loop.conversationViews.CallFailedView);
+          loop.conversationViews.OutgoingCallFailedView);
+    });
+
+    describe("Title", function() {
+      it("should set the title to the contact name", function() {
+        store.setStoreState({
+          contact: contact,
+          callerId: "fakeCallerId",
+          callUrl: "fakeCallUrl"
+        });
+
+        view = mountTestComponent();
+
+        expect(fakeWindow.document.title).to.equal(contact.name[0]);
+      });
+
+      it("should use the contact email if there is no name", function() {
+        delete contact.name;
+
+        store.setStoreState({
+          contact: contact,
+          callerId: "fakeCallerId",
+          callUrl: "fakeCallUrl"
+        });
+
+        view = mountTestComponent();
+
+        expect(fakeWindow.document.title).to.equal(contact.email[0].value);
+      });
+
+      it("should use the caller id if there is no contact", function() {
+        store.setStoreState({
+          callerId: "fakeCallerId",
+          callUrl: "fakeCallUrl"
+        });
+
+        view = mountTestComponent();
+
+        expect(fakeWindow.document.title).to.equal("fakeCallerId");
+      });
+
+      it("should fallback to callUrl if there is no contact nor caller id",
+        function() {
+          store.setStoreState({
+            callUrl: "fakeCallUrl"
+          });
+
+          view = mountTestComponent();
+
+          expect(fakeWindow.document.title).to.equal("fakeCallUrl");
+        });
     });
   });
 
@@ -697,34 +801,5 @@ describe("loop.conversationViews", function () {
             new sharedActions.BlockCall());
       });
     });
-  });
-
-  describe("GenericFailureView", function() {
-    var view, fakeAudio;
-
-    beforeEach(function() {
-      fakeAudio = {
-        play: sinon.spy(),
-        pause: sinon.spy(),
-        removeAttribute: sinon.spy()
-      };
-      navigator.mozLoop.doNotDisturb = false;
-      sandbox.stub(window, "Audio").returns(fakeAudio);
-
-      view = TestUtils.renderIntoDocument(
-        loop.conversationViews.GenericFailureView({
-          cancelCall: function() {}
-        })
-      );
-    });
-
-    it("should play a failure sound, once", function() {
-      sinon.assert.calledOnce(navigator.mozLoop.getAudioBlob);
-      sinon.assert.calledWithExactly(navigator.mozLoop.getAudioBlob,
-                                     "failure", sinon.match.func);
-      sinon.assert.calledOnce(fakeAudio.play);
-      expect(fakeAudio.loop).to.equal(false);
-    });
-
   });
 });

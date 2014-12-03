@@ -103,25 +103,14 @@ loop.conversationViews = (function(mozL10n) {
    */
   var ConversationDetailView = React.createClass({displayName: 'ConversationDetailView',
     propTypes: {
-      contact: React.PropTypes.object
+      displayName: React.PropTypes.string
     },
 
     render: function() {
-      var contactName;
-
-      if (this.props.contact.name &&
-          this.props.contact.name[0]) {
-        contactName = this.props.contact.name[0];
-      } else {
-        contactName = _getPreferredEmail(this.props.contact).value;
-      }
-
-      document.title = contactName;
-
       return (
         React.DOM.div({className: "call-window"}, 
           CallIdentifierView({
-            peerIdentifier: contactName, 
+            peerIdentifier: this.props.displayName, 
             showIcons: false}), 
           React.DOM.div(null, this.props.children)
         )
@@ -182,14 +171,12 @@ loop.conversationViews = (function(mozL10n) {
       dispatcher: React.PropTypes.instanceOf(loop.Dispatcher).isRequired,
       mozLoop: React.PropTypes.object.isRequired,
       incomingHasVideo: React.PropTypes.bool.isRequired,
-      callerId: React.PropTypes.string,
-      callUrl: React.PropTypes.string,
+      displayName: React.PropTypes.string,
       urlCreationDate: React.PropTypes.string
     },
 
     getDefaultProps: function() {
       return {
-        showMenu: false,
         incomingHasVideo: true
       };
     },
@@ -202,14 +189,6 @@ loop.conversationViews = (function(mozL10n) {
       this.props.mozLoop.stopAlerting();
     },
 
-// XXX Is this really needed, doesn't seem to do anything????
-    clickHandler: function(e) {
-      var target = e.target;
-      if (!target.classList.contains('btn-chevron')) {
-        this._hideDeclineMenu();
-      }
-    },
-
     _handleAccept: function(callType) {
       return function() {
         this.props.dispatcher.dispatch(new sharedActions.AcceptCall({
@@ -220,16 +199,11 @@ loop.conversationViews = (function(mozL10n) {
 
     _handleDecline: function() {
       this.props.dispatcher.dispatch(new sharedActions.DeclineCall());
-      // XXX really?
-      return false;
     },
 
-    _handleDeclineBlock: function(e) {
+    _handleDeclineBlock: function(event) {
+      event.preventDefault();
       this.props.dispatcher.dispatch(new sharedActions.BlockCall());
-      /* Prevent event propagation
-       * stop the click from reaching parent element */
-      // XXX really?
-      return false;
     },
 
     /**
@@ -263,33 +237,18 @@ loop.conversationViews = (function(mozL10n) {
       return props;
     },
 
-    /**
-     * Used to remove the scheme from a url.
-     *
-     * @param {String} url  The url to remove the scheme from.
-     */
-    _removeScheme: function(url) {
-      if (!url) {
-        return "";
-      }
-      return url.replace(/^https?:\/\//, "");
-    },
-
     render: function() {
       /* jshint ignore:start */
       var dropdownMenuClassesDecline = React.addons.classSet({
         "native-dropdown-menu": true,
         "conversation-window-dropdown": true,
-        "visually-hidden": !this.props.showMenu
+        "visually-hidden": !this.state.showMenu
       });
-console.log(this.props);
-      var peerIdentifier = this.props.callerId ||
-        this._removeScheme(this.props.callUrl);
 
       return (
         React.DOM.div({className: "call-window"}, 
           CallIdentifierView({video: this.props.incomingHasVideo, 
-            peerIdentifier: peerIdentifier, 
+            peerIdentifier: this.props.displayName, 
             urlCreationDate: this.props.urlCreationDate, 
             showIcons: true}), 
 
@@ -340,7 +299,7 @@ console.log(this.props);
     propTypes: {
       dispatcher: React.PropTypes.instanceOf(loop.Dispatcher).isRequired,
       callState: React.PropTypes.string,
-      contact: React.PropTypes.object,
+      displayName: React.PropTypes.string,
       enableCancelButton: React.PropTypes.bool
     },
 
@@ -374,7 +333,7 @@ console.log(this.props);
       });
 
       return (
-        ConversationDetailView({contact: this.props.contact}, 
+        ConversationDetailView({displayName: this.props.displayName}, 
 
           React.DOM.p({className: "btn-label"}, pendingStateString), 
 
@@ -390,45 +349,30 @@ console.log(this.props);
     }
   });
 
-  /**
-   * Something went wrong view. Displayed when there's a big problem.
-   *
-   * XXX Merge with CallFailedView
-   */
-  var GenericFailureView = React.createClass({displayName: 'GenericFailureView',
+  var BaseCallFailedView = React.createClass({displayName: 'BaseCallFailedView',
     mixins: [sharedMixins.AudioMixin],
-
-    propTypes: {
-      cancelCall: React.PropTypes.func.isRequired
-    },
 
     componentDidMount: function() {
       this.play("failure");
     },
 
     render: function() {
-      document.title = mozL10n.get("generic_failure_title");
-
       return (
         React.DOM.div({className: "call-window"}, 
           React.DOM.h2(null, mozL10n.get("generic_failure_title")), 
 
-          React.DOM.div({className: "btn-group call-action-group"}, 
-            React.DOM.button({className: "btn btn-cancel", 
-                    onClick: this.props.cancelCall}, 
-              mozL10n.get("cancel_button")
-            )
-          )
+          this.props.children
         )
       );
     }
   });
 
+
   /**
    * Call failed view. Displayed when a call fails.
    */
-  var CallFailedView = React.createClass({displayName: 'CallFailedView',
-    mixins: [Backbone.Events, sharedMixins.AudioMixin],
+  var OutgoingCallFailedView = React.createClass({displayName: 'OutgoingCallFailedView',
+    mixins: [Backbone.Events],
 
     propTypes: {
       dispatcher: React.PropTypes.instanceOf(loop.Dispatcher).isRequired,
@@ -447,7 +391,6 @@ console.log(this.props);
     },
 
     componentDidMount: function() {
-      this.play("failure");
       this.listenTo(this.props.store, "change:emailLink",
                     this._onEmailLinkReceived);
       this.listenTo(this.props.store, "error:emailLink",
@@ -472,13 +415,6 @@ console.log(this.props);
       });
     },
 
-    _renderError: function() {
-      if (!this.state.emailLinkError) {
-        return;
-      }
-      return React.DOM.p({className: "error"}, mozL10n.get("unable_retrieve_url"));
-    },
-
     retryCall: function() {
       this.props.dispatcher.dispatch(new sharedActions.RetryCall());
     },
@@ -496,11 +432,16 @@ console.log(this.props);
       this.props.dispatcher.dispatch(new sharedActions.FetchEmailLink());
     },
 
+    _renderError: function() {
+      if (!this.state.emailLinkError) {
+        return;
+      }
+      return React.DOM.p({className: "error"}, mozL10n.get("unable_retrieve_url"));
+    },
+
     render: function() {
       return (
-        React.DOM.div({className: "call-window"}, 
-          React.DOM.h2(null, mozL10n.get("generic_failure_title")), 
-
+        BaseCallFailedView(null, 
           React.DOM.p({className: "btn-label"}, mozL10n.get("generic_failure_with_reason2")), 
 
           this._renderError(), 
@@ -518,6 +459,29 @@ console.log(this.props);
                     onClick: this.emailLink, 
                     disabled: this.state.emailLinkButtonDisabled}, 
               mozL10n.get("share_button2")
+            )
+          )
+        )
+      );
+    }
+  });
+
+  var IncomingCallFailedView = React.createClass({displayName: 'IncomingCallFailedView',
+    propTypes: {
+      dispatcher: React.PropTypes.instanceOf(loop.Dispatcher).isRequired,
+    },
+
+    cancelCall: function() {
+      this.props.dispatcher.dispatch(new sharedActions.CancelCall());
+    },
+
+    render: function() {
+      return (
+        BaseCallFailedView(null, 
+          React.DOM.div({className: "btn-group call-action-group"}, 
+            React.DOM.button({className: "btn btn-cancel", 
+                    onClick: this.cancelCall}, 
+              mozL10n.get("cancel_button")
             )
           )
         )
@@ -662,10 +626,10 @@ console.log(this.props);
    * Master View Controller for calls. This manages
    * the different views that need displaying.
    */
-// XXX Check Titles
   var ConversationView = React.createClass({displayName: 'ConversationView',
     mixins: [
       sharedMixins.AudioMixin,
+      sharedMixins.DocumentTitleMixin,
       Backbone.Events
     ],
 
@@ -706,10 +670,41 @@ console.log(this.props);
     },
 
     /**
+     * Used to remove the scheme from a url.
+     *
+     * @param {String} url  The url to remove the scheme from.
+     */
+    _removeScheme: function(url) {
+      if (!url) {
+        return "";
+      }
+      return url.replace(/^https?:\/\//, "");
+    },
+
+    _getDisplayName: function() {
+      var displayName = "";
+
+      if (this.state.contact) {
+        if (this.state.contact.name &&
+            this.state.contact.name[0]) {
+          displayName = this.state.contact.name[0];
+        } else {
+          displayName = _getPreferredEmail(this.state.contact).value;
+        }
+      } else if (this.state.callerId) {
+        displayName = this.state.callerId;
+      } else if (this.state.callUrl) {
+        displayName = this._removeScheme(this.state.callUrl);
+      }
+
+      return displayName;
+    },
+
+    /**
      * Used to setup and render the feedback view.
      */
     _renderFeedbackView: function() {
-      document.title = mozL10n.get("conversation_has_ended");
+      this.setTitle(mozL10n.get("conversation_has_ended"));
 
       return (
         sharedViews.FeedbackView({
@@ -724,7 +719,7 @@ console.log(this.props);
         return (PendingConversationView({
           dispatcher: this.props.dispatcher, 
           callState: this.state.callState, 
-          contact: this.state.contact, 
+          displayName: this._getDisplayName(), 
           enableCancelButton: this._isCancellable()}
         ));
       }
@@ -732,13 +727,11 @@ console.log(this.props);
       // Otherwise Incoming
       switch (this.state.callState) {
         case CALL_STATES.ALERTING: {
-          // XXX Is callType right?
           return (IncomingCallView({
             dispatcher: this.props.dispatcher, 
             mozLoop: this.props.mozLoop, 
-            video: this.state.callType, 
-            callerId: this.state.callerId, 
-            callUrl: this.state.callUrl, 
+            incomingHasVideo: this.state.callType === CALL_TYPES.AUDIO_VIDEO, 
+            displayName: this._getDisplayName(), 
             urlCreationDate: this.state.urlCreationDate}
           ));
         }
@@ -751,18 +744,30 @@ console.log(this.props);
       };
     },
 
+    _renderCallFailedView: function() {
+      if (this.state.outgoing) {
+        return (OutgoingCallFailedView({
+          dispatcher: this.props.dispatcher, 
+          store: this.props.store, 
+          contact: this.state.contact}
+        ));
+      }
+
+      return (IncomingCallFailedView({
+        dispatcher: this.props.dispatcher}
+      ));
+    },
+
     render: function() {
+      this.setTitle(this._getDisplayName());
+
       switch (this.state.callState) {
         case CALL_STATES.CLOSE: {
           this._closeWindow();
           return null;
         }
         case CALL_STATES.TERMINATED: {
-          return (CallFailedView({
-            dispatcher: this.props.dispatcher, 
-            store: this.props.store, 
-            contact: this.state.contact}
-          ));
+          return this._renderCallFailedView();
         }
         case CALL_STATES.ONGOING: {
           return (OngoingConversationView({
@@ -791,8 +796,8 @@ console.log(this.props);
     PendingConversationView: PendingConversationView,
     CallIdentifierView: CallIdentifierView,
     ConversationDetailView: ConversationDetailView,
-    CallFailedView: CallFailedView,
-    GenericFailureView: GenericFailureView,
+    OutgoingCallFailedView: OutgoingCallFailedView,
+    IncomingCallFailedView: IncomingCallFailedView,
     IncomingCallView: IncomingCallView,
     OngoingConversationView: OngoingConversationView,
     ConversationView: ConversationView
