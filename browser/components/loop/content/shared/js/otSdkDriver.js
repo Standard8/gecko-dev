@@ -49,6 +49,7 @@ loop.OTSdkDriver = (function() {
       // At this state we init the publisher, even though we might be waiting for
       // the initial connect of the session. This saves time when setting up
       // the media.
+      this.publisherConfig.fitMode = "contain";
       this.publisher = this.sdk.initPublisher(this.getLocalElement(),
         this.publisherConfig);
       this.publisher.on("accessAllowed", this._onPublishComplete.bind(this));
@@ -234,6 +235,7 @@ loop.OTSdkDriver = (function() {
      * https://tokbox.com/opentok/libraries/client/js/reference/StreamEvent.html
      */
     _onRemoteStreamCreated: function(event) {
+      this.publisherConfig.fitMode = "cover";
       this.session.subscribe(event.stream,
         this.getRemoteElement(), this.publisherConfig);
 
