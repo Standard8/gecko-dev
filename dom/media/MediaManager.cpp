@@ -1683,6 +1683,18 @@ MediaManager::GetUserMedia(
 
   nsIURI* docURI = aWindow->GetDocumentURI();
 
+  bool isLoop = false;
+  nsCOMPtr<nsIURI> loopURI;
+  nsresult rv = NS_NewURI(getter_AddRefs(loopURI), "about:loopconversation");
+  NS_ENSURE_SUCCESS(rv, rv);
+  rv = docURI->EqualsExceptRef(loopURI, &isLoop);
+  NS_ENSURE_SUCCESS(rv, rv);
+
+  if (isLoop) {
+    privileged = true;
+  }
+
+
   if (c.mVideo.IsMediaTrackConstraints()) {
     auto& tc = c.mVideo.GetAsMediaTrackConstraints();
     MediaSourceEnum src = StringToEnum(dom::MediaSourceEnumValues::strings,
@@ -1725,6 +1737,13 @@ MediaManager::GetUserMedia(
     default:
       return task->Denied(NS_LITERAL_STRING("NotFoundError"));
     }
+
+    // For window and application sharing, Loop needs to prompt.
+    if (isLoop &&
+        (src == dom::MediaSourceEnum::Window ||
+         src == dom::MediaSourceEnum::Application)) {
+       privileged = false;
+    }
   }
 
 #ifdef MOZ_B2G_CAMERA
@@ -1732,17 +1751,6 @@ MediaManager::GetUserMedia(
     mCameraManager = nsDOMCameraManager::CreateInstance(aWindow);
   }
 #endif
-
-  bool isLoop = false;
-  nsCOMPtr<nsIURI> loopURI;
-  nsresult rv = NS_NewURI(getter_AddRefs(loopURI), "about:loopconversation");
-  NS_ENSURE_SUCCESS(rv, rv);
-  rv = docURI->EqualsExceptRef(loopURI, &isLoop);
-  NS_ENSURE_SUCCESS(rv, rv);
-
-  if (isLoop) {
-    privileged = true;
-  }
 
   // XXX No full support for picture in Desktop yet (needs proper UI)
   if (privileged ||
