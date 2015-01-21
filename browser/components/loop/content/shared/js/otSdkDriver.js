@@ -268,10 +268,10 @@ loop.OTSdkDriver = (function() {
      */
     _onRemoteStreamCreated: function(event) {
       this.publisherConfig.fitMode = "cover";
-console.log(event.stream.videoType);
 
       var remoteElement;
       if (event.stream.videoType === "screen") {
+        // XXX Implement in part 2.
         remoteElement = "null";
       } else {
         remoteElement = this.getRemoteElement();

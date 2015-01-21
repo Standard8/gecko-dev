@@ -6,20 +6,25 @@ describe("loop.roomViews", function () {
   "use strict";
 
   var ROOM_STATES = loop.store.ROOM_STATES;
+  var SCREENSHARE_STATES = loop.store.SCREENSHARE_STATES;
 
   var sandbox, dispatcher, roomStore, activeRoomStore, fakeWindow;
+  var fakeMozLoop;
 
   beforeEach(function() {
     sandbox = sinon.sandbox.create();
 
     dispatcher = new loop.Dispatcher();
 
+    fakeMozLoop = {
+      getAudioBlob: sinon.stub(),
+      getLoopPref: sinon.stub()
+    };
+
     fakeWindow = {
       document: {},
       navigator: {
-        mozLoop: {
-          getAudioBlob: sinon.stub()
-        }
+        mozLoop: fakeMozLoop
       },
       addEventListener: function() {},
       removeEventListener: function() {}
@@ -68,7 +73,8 @@ describe("loop.roomViews", function () {
         videoMuted: false,
         failureReason: undefined,
         used: false,
-        foo: "bar"
+        foo: "bar",
+        screenSharingState: SCREENSHARE_STATES.NOT_SHARING
       });
     });
 
@@ -212,7 +218,8 @@ describe("loop.roomViews", function () {
           roomStore: roomStore,
           feedbackStore: new loop.store.FeedbackStore(dispatcher, {
             feedbackClient: {}
-          })
+          }),
+          mozLoop: fakeMozLoop
         }));
     }
 
