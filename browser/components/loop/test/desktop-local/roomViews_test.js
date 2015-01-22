@@ -6,7 +6,7 @@ describe("loop.roomViews", function () {
   "use strict";
 
   var ROOM_STATES = loop.store.ROOM_STATES;
-  var SCREENSHARE_STATES = loop.store.SCREENSHARE_STATES;
+  var SCREEN_SHARE_STATES = loop.shared.utils.SCREEN_SHARE_STATES;
 
   var sandbox, dispatcher, roomStore, activeRoomStore, fakeWindow;
   var fakeMozLoop;
@@ -74,7 +74,7 @@ describe("loop.roomViews", function () {
         failureReason: undefined,
         used: false,
         foo: "bar",
-        screenSharingState: SCREENSHARE_STATES.NOT_SHARING
+        screenSharingState: SCREEN_SHARE_STATES.INACTIVE
       });
     });
 

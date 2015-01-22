@@ -9,6 +9,7 @@ loop.OTSdkDriver = (function() {
 
   var sharedActions = loop.shared.actions;
   var FAILURE_DETAILS = loop.shared.utils.FAILURE_DETAILS;
+  var SCREEN_SHARE_STATES = loop.shared.utils.SCREEN_SHARE_STATES;
 
   /**
    * This is a wrapper for the OT sdk. It is used to translate the SDK events into
@@ -37,6 +38,14 @@ loop.OTSdkDriver = (function() {
 
   OTSdkDriver.prototype = {
     /**
+     * Clones the publisher config into a new object, as the sdk modifies the
+     * properties object.
+     */
+    _getCopyPublisherConfig: function() {
+      return _.extend({}, this.publisherConfig);
+    },
+
+    /**
      * Handles the setupStreamElements action. Saves the required data and
      * kicks off the initialising of the publisher.
      *
@@ -54,7 +63,7 @@ loop.OTSdkDriver = (function() {
       // the media.
       this.publisherConfig.fitMode = "contain";
       this.publisher = this.sdk.initPublisher(this.getLocalElement(),
-        this.publisherConfig);
+        this._getCopyPublisherConfig());
       this.publisher.on("accessAllowed", this._onPublishComplete.bind(this));
       this.publisher.on("accessDenied", this._onPublishDenied.bind(this));
       this.publisher.on("accessDialogOpened",
@@ -77,32 +86,50 @@ loop.OTSdkDriver = (function() {
     },
 
     /**
-     * XXX
+     * Initiates a screen sharing publisher.
      */
     startScreenShare: function() {
-      this.screenshare = this.sdk.initPublisher(this.getScreenShareElementFunc(), {videoSource: "window"});
+      this.dispatcher.dispatch(new sharedActions.ScreenSharingState({
+        state: SCREEN_SHARE_STATES.PENDING
+      }));
+
+      var config = this._getCopyPublisherConfig();
+      config.videoSource = "window";
+
+      this.screenshare = this.sdk.initPublisher(this.getScreenShareElementFunc(),
+        config);
       this.screenshare.on("accessAllowed", this._onScreenShareComplete.bind(this));
       this.screenshare.on("accessDenied", this._onScreenShareDenied.bind(this));
     },
 
+    /**
+     * Ends an active screenshare session.
+     */
     endScreenShare: function() {
+      if (!this.screenshare) {
+        return;
+      }
+
       this.session.unpublish(this.screenshare);
+      this.screenshare.off("accessAllowed accessDenied");
       delete this.screenshare;
       this.dispatcher.dispatch(new sharedActions.ScreenSharingState({
-        active: false
+        state: SCREEN_SHARE_STATES.INACTIVE
       }));
     },
 
     _onScreenShareComplete: function() {
-      console.log("Screen share complete");
       this.session.publish(this.screenshare);
       this.dispatcher.dispatch(new sharedActions.ScreenSharingState({
-        active: true
+        state: SCREEN_SHARE_STATES.ACTIVE
       }));
     },
 
     _onScreenShareDenied: function() {
       console.log("Screen share denied");
+      this.dispatcher.dispatch(new sharedActions.ScreenSharingState({
+        state: SCREEN_SHARE_STATES.INACTIVE
+      }));
     },
 
     /**
@@ -267,6 +294,7 @@ loop.OTSdkDriver = (function() {
      * https://tokbox.com/opentok/libraries/client/js/reference/StreamEvent.html
      */
     _onRemoteStreamCreated: function(event) {
+      // XXX?
       this.publisherConfig.fitMode = "cover";
 
       var remoteElement;
@@ -278,7 +306,7 @@ loop.OTSdkDriver = (function() {
       }
 
       this.session.subscribe(event.stream,
-        remoteElement, this.publisherConfig);
+        remoteElement, this._getCopyPublisherConfig());
 
       this._subscribedRemoteStream = true;
       if (this._checkAllStreamsConnected()) {

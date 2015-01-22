@@ -12,18 +12,13 @@ loop.store.ActiveRoomStore = (function() {
 
   var sharedActions = loop.shared.actions;
   var FAILURE_DETAILS = loop.shared.utils.FAILURE_DETAILS;
+  var SCREEN_SHARE_STATES = loop.shared.utils.SCREEN_SHARE_STATES;
 
   // Error numbers taken from
   // https://github.com/mozilla-services/loop-server/blob/master/loop/errno.json
   var REST_ERRNOS = loop.shared.utils.REST_ERRNOS;
 
   var ROOM_STATES = loop.store.ROOM_STATES;
-
-  var SCREENSHARE_STATES = loop.store.SCREENSHARE_STATES = {
-    NOT_SHARING: "ss-not-sharing",
-    SHARING_PENDING: "ss-sharing-pending",
-    SHARING_ACTIVE: "ss-sharing-active"
-  };
 
   /**
    * Active room store.
@@ -76,7 +71,7 @@ loop.store.ActiveRoomStore = (function() {
         // with it. Entering and leaving the room without seeing
         // anyone is not considered as 'used'
         used: false,
-        screenSharingState: SCREENSHARE_STATES.NOT_SHARING
+        screenSharingState: SCREEN_SHARE_STATES.INACTIVE
       };
     },
 
@@ -123,7 +118,6 @@ loop.store.ActiveRoomStore = (function() {
         "connectedToSdkServers",
         "connectionFailure",
         "setMute",
-        "startScreenShare",
         "screenSharingState",
         "remotePeerDisconnected",
         "remotePeerConnected",
@@ -377,27 +371,10 @@ loop.store.ActiveRoomStore = (function() {
     },
 
     /**
-     * Used to note that the screensharing is now pending.
-     */
-    startScreenShare: function() {
-      this.setStoreState({
-        screenSharingState: SCREENSHARE_STATES.SHARING_PENDING
-      });
-    },
-
-    /**
      * Used to note the current screensharing state.
      */
     screenSharingState: function(actionData) {
-      if (actionData.active) {
-        this.setStoreState({
-          screenSharingState: SCREENSHARE_STATES.SHARING_ACTIVE
-        });
-      } else {
-        this.setStoreState({
-          screenSharingState: SCREENSHARE_STATES.NOT_SHARING
-        });
-      }
+      this.setStoreState({screenSharingState: actionData.state});
     },
 
     /**

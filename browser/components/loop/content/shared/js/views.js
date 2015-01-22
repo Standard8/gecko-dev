@@ -13,6 +13,7 @@ loop.shared.views = (function(_, OT, l10n) {
 
   var sharedModels = loop.shared.models;
   var sharedMixins = loop.shared.mixins;
+  var SCREEN_SHARE_STATES = loop.shared.utils.SCREEN_SHARE_STATES;
 
   /**
    * Media control button.
@@ -78,24 +79,26 @@ loop.shared.views = (function(_, OT, l10n) {
    */
   var ScreenShareControlButton = React.createClass({displayName: "ScreenShareControlButton",
     propTypes: {
-      action: React.PropTypes.func.isRequired,
-      active: React.PropTypes.bool.isRequired,
+      action: React.PropTypes.func,
+      state: React.PropTypes.string.isRequired,
     },
 
     handleClick: function() {
       this.props.action();
     },
 
-// XXX Fix L10n
     render: function() {
+// XXX need styling for disabled button.
       var screenShareClasses = React.addons.classSet({
         "btn": true,
         "btn-screen-share": true,
         "transparent-button": true,
-        "active": this.props.active,
+        "active": this.props.state === SCREEN_SHARE_STATES.ACTIVE,
+        "disabled": this.props.state === SCREEN_SHARE_STATES.PENDING,
         "hide": !this.props.action
       });
 
+// XXX Fix L10n
       return (
         React.createElement("button", {className: screenShareClasses, onClick: this.handleClick, 
                 title: "screenshare"}, 
@@ -113,7 +116,7 @@ loop.shared.views = (function(_, OT, l10n) {
       return {
         video: {enabled: true, visible: true},
         audio: {enabled: true, visible: true},
-        screenShare: {active: false},
+        screenShare: {state: SCREEN_SHARE_STATES.INACTIVE, action: null},
         enableHangup: true
       };
     },
@@ -168,7 +171,7 @@ loop.shared.views = (function(_, OT, l10n) {
           ), 
           React.createElement("li", {className: "conversation-toolbar-btn-box btn-screen-share-entry"}, 
             React.createElement(ScreenShareControlButton, {action: this.props.screenShare.handleScreenShare, 
-                                      active: this.props.screenShare.active})
+                                      state: this.props.screenShare.state})
           )
         )
       );

@@ -204,7 +204,8 @@ loop.shared.actions = (function() {
      * Used to notifiy that screen sharing is active or not.
      */
     ScreenSharingState: Action.define("screenSharingState", {
-      active: Boolean
+      // One of loop.shared.utils.SCREEN_SHARE_STATES
+      state: String
     }),
 
     /**

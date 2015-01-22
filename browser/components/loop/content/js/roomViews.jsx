@@ -14,7 +14,7 @@ loop.roomViews = (function(mozL10n) {
   var sharedActions = loop.shared.actions;
   var sharedMixins = loop.shared.mixins;
   var ROOM_STATES = loop.store.ROOM_STATES;
-  var SCREENSHARE_STATES = loop.store.SCREENSHARE_STATES;
+  var SCREEN_SHARE_STATES = loop.shared.utils.SCREEN_SHARE_STATES;
   var sharedViews = loop.shared.views;
 
   /**
@@ -236,7 +236,7 @@ loop.roomViews = (function(mozL10n) {
      * XXX
      */
     handleScreenShare: function() {
-      if (this.state.screenSharingState === SCREENSHARE_STATES.SHARING_ACTIVE) {
+      if (this.state.screenSharingState === SCREEN_SHARE_STATES.ACTIVE) {
         this.props.dispatcher.dispatch(
           new sharedActions.EndScreenShare({}));
       } else {
@@ -258,13 +258,11 @@ loop.roomViews = (function(mozL10n) {
       });
 
       var screenShareData = {
-        active: false,
+        state: this.state.screenSharingState,
         handleScreenShare: null
       };
 
       if (this.props.mozLoop.getLoopPref("screenshare.enabled")) {
-        screenShareData.active =
-          this.state.screenSharingState === SCREENSHARE_STATES.SHARING_ACTIVE;
         screenShareData.handleScreenShare = this.handleScreenShare;
       }
 
@@ -300,7 +298,7 @@ loop.roomViews = (function(mozL10n) {
                       <div className="video_inner remote"></div>
                     </div>
                     <div className={localStreamClasses}></div>
-                    <div className="screen-share hide"></div>
+                    <div className="screen-share"></div>
                   </div>
                   <sharedViews.ConversationToolbar
                     video={{enabled: !this.state.videoMuted, visible: true}}
