@@ -98,7 +98,7 @@ loop.OTSdkDriver = (function() {
 
       this.screenshare = this.sdk.initPublisher(this.getScreenShareElementFunc(),
         config);
-      this.screenshare.on("accessAllowed", this._onScreenShareComplete.bind(this));
+      this.screenshare.on("accessAllowed", this._onScreenShareGranted.bind(this));
       this.screenshare.on("accessDenied", this._onScreenShareDenied.bind(this));
     },
 
@@ -112,21 +112,8 @@ loop.OTSdkDriver = (function() {
 
       this.session.unpublish(this.screenshare);
       this.screenshare.off("accessAllowed accessDenied");
+      this.screenshare.destroy();
       delete this.screenshare;
-      this.dispatcher.dispatch(new sharedActions.ScreenSharingState({
-        state: SCREEN_SHARE_STATES.INACTIVE
-      }));
-    },
-
-    _onScreenShareComplete: function() {
-      this.session.publish(this.screenshare);
-      this.dispatcher.dispatch(new sharedActions.ScreenSharingState({
-        state: SCREEN_SHARE_STATES.ACTIVE
-      }));
-    },
-
-    _onScreenShareDenied: function() {
-      console.log("Screen share denied");
       this.dispatcher.dispatch(new sharedActions.ScreenSharingState({
         state: SCREEN_SHARE_STATES.INACTIVE
       }));
@@ -161,6 +148,8 @@ loop.OTSdkDriver = (function() {
      * Disconnects the sdk session.
      */
     disconnectSession: function() {
+      this.endScreenShare();
+
       if (this.session) {
         this.session.off("streamCreated connectionDestroyed sessionDisconnected");
         this.session.disconnect();
@@ -377,7 +366,26 @@ loop.OTSdkDriver = (function() {
     _checkAllStreamsConnected: function() {
       return this._publishedLocalStream &&
         this._subscribedRemoteStream;
-    }
+    },
+
+    /**
+     * Called when a screenshare is complete, publishes it to the session.
+     */
+    _onScreenShareGranted: function() {
+      this.session.publish(this.screenshare);
+      this.dispatcher.dispatch(new sharedActions.ScreenSharingState({
+        state: SCREEN_SHARE_STATES.ACTIVE
+      }));
+    },
+
+    /**
+     * Called when a screenshare is denied. Notifies the other stores.
+     */
+    _onScreenShareDenied: function() {
+      this.dispatcher.dispatch(new sharedActions.ScreenSharingState({
+        state: SCREEN_SHARE_STATES.INACTIVE
+      }));
+    },
   };
 
   return OTSdkDriver;
