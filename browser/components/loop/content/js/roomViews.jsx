@@ -298,7 +298,7 @@ loop.roomViews = (function(mozL10n) {
                       <div className="video_inner remote"></div>
                     </div>
                     <div className={localStreamClasses}></div>
-                    <div className="screen-share"></div>
+                    <div className="screen-share hide"></div>
                   </div>
                   <sharedViews.ConversationToolbar
                     video={{enabled: !this.state.videoMuted, visible: true}}

@@ -298,7 +298,7 @@ loop.roomViews = (function(mozL10n) {
                       React.createElement("div", {className: "video_inner remote"})
                     ), 
                     React.createElement("div", {className: localStreamClasses}), 
-                    React.createElement("div", {className: "screen-share"})
+                    React.createElement("div", {className: "screen-share hide"})
                   ), 
                   React.createElement(sharedViews.ConversationToolbar, {
                     video: {enabled: !this.state.videoMuted, visible: true}, 
