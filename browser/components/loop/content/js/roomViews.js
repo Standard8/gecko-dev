@@ -232,19 +232,6 @@ loop.roomViews = (function(mozL10n) {
         }));
     },
 
-    /**
-     * XXX
-     */
-    handleScreenShare: function() {
-      if (this.state.screenSharingState === SCREEN_SHARE_STATES.ACTIVE) {
-        this.props.dispatcher.dispatch(
-          new sharedActions.EndScreenShare({}));
-      } else {
-        this.props.dispatcher.dispatch(
-          new sharedActions.StartScreenShare({}));
-      }
-    },
-
     render: function() {
       if (this.state.roomName) {
         this.setTitle(this.state.roomName);
@@ -259,11 +246,11 @@ loop.roomViews = (function(mozL10n) {
 
       var screenShareData = {
         state: this.state.screenSharingState,
-        handleScreenShare: null
+        visible: false
       };
 
       if (this.props.mozLoop.getLoopPref("screenshare.enabled")) {
-        screenShareData.handleScreenShare = this.handleScreenShare;
+        screenShareData.visible = true;
       }
 
       switch(this.state.roomState) {
@@ -301,6 +288,7 @@ loop.roomViews = (function(mozL10n) {
                     React.createElement("div", {className: "screen-share hide"})
                   ), 
                   React.createElement(sharedViews.ConversationToolbar, {
+                    dispatcher: this.props.dispatcher, 
                     video: {enabled: !this.state.videoMuted, visible: true}, 
                     audio: {enabled: !this.state.audioMuted, visible: true}, 
                     publishStream: this.publishStream, 

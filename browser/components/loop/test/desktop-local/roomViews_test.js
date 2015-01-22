@@ -279,6 +279,20 @@ describe("loop.roomViews", function () {
       expect(muteBtn.classList.contains("muted")).eql(true);
     });
 
+    it("should dispatch a `StartScreenShare` action when sharing is not active " +
+       "and the screen share button is pressed", function() {
+      view = mountTestComponent();
+
+      view.setState({screenSharingState: SCREEN_SHARE_STATES.INACTIVE});
+
+      var muteBtn = view.getDOMNode().querySelector('.btn-mute-video');
+
+        React.addons.TestUtils.Simulate.click(muteBtn);
+
+        sinon.assert.calledWithMatch(dispatcher.dispatch,
+          sinon.match.hasOwn("name", "setMute"));
+    });
+
     describe("#componentWillUpdate", function() {
       function expectActionDispatched(view) {
         sinon.assert.calledOnce(dispatcher.dispatch);
