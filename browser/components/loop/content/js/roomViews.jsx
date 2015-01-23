@@ -282,7 +282,7 @@ loop.roomViews = (function(mozL10n) {
                 <div className="conversation room-conversation">
                   <div className="media nested">
                     <div className="video_wrapper remote_wrapper">
-                      <div className="video_inner remote"></div>
+                      <div className="video_inner remote remote-stream"></div>
                     </div>
                     <div className={localStreamClasses}></div>
                     <div className="screen-share hide"></div>

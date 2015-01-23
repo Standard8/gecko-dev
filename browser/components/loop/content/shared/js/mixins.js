@@ -174,11 +174,15 @@ loop.shared.mixins = (function() {
     updateVideoContainer: function() {
       var localStreamParent = this._getElement('.local .OT_publisher');
       var remoteStreamParent = this._getElement('.remote .OT_subscriber');
+      var screenShareStreamParent = this._getElement('.screen-share .OT_subscriber');
       if (localStreamParent) {
         localStreamParent.style.width = "100%";
       }
       if (remoteStreamParent) {
         remoteStreamParent.style.height = "100%";
+      }
+      if (screenShareStreamParent) {
+        screenShareStreamParent.style.height = "100%";
       }
     },
 

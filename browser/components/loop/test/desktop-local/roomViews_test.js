@@ -74,7 +74,8 @@ describe("loop.roomViews", function () {
         failureReason: undefined,
         used: false,
         foo: "bar",
-        screenSharingState: SCREEN_SHARE_STATES.INACTIVE
+        screenSharingState: SCREEN_SHARE_STATES.INACTIVE,
+        receivingScreenShare: false
       });
     });
 
