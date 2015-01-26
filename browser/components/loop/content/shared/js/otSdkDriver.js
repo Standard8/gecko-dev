@@ -9,6 +9,7 @@ loop.OTSdkDriver = (function() {
 
   var sharedActions = loop.shared.actions;
   var FAILURE_DETAILS = loop.shared.utils.FAILURE_DETAILS;
+  var STREAM_PROPERTIES = loop.shared.utils.STREAM_PROPERTIES;
 
   /**
    * This is a wrapper for the OT sdk. It is used to translate the SDK events into
@@ -52,6 +53,7 @@ loop.OTSdkDriver = (function() {
       this.publisherConfig.fitMode = "contain";
       this.publisher = this.sdk.initPublisher(this.getLocalElement(),
         this.publisherConfig);
+      this.publisher.on("streamCreated", this._onLocalStreamCreated.bind(this));
       this.publisher.on("accessAllowed", this._onPublishComplete.bind(this));
       this.publisher.on("accessDenied", this._onPublishDenied.bind(this));
       this.publisher.on("accessDialogOpened",
@@ -92,6 +94,7 @@ loop.OTSdkDriver = (function() {
         this._onConnectionDestroyed.bind(this));
       this.session.on("sessionDisconnected",
         this._onSessionDisconnected.bind(this));
+      this.session.on("streamPropertyChanged", this._onStreamPropertyChanged(this));
 
       // This starts the actual session connection.
       this.session.connect(sessionData.apiKey, sessionData.sessionToken,
@@ -103,12 +106,12 @@ loop.OTSdkDriver = (function() {
      */
     disconnectSession: function() {
       if (this.session) {
-        this.session.off("streamCreated connectionDestroyed sessionDisconnected");
+        this.session.off("streamCreated streamDestroyed connectionDestroyed sessionDisconnected");
         this.session.disconnect();
         delete this.session;
       }
       if (this.publisher) {
-        this.publisher.off("accessAllowed accessDenied accessDialogOpened");
+        this.publisher.off("accessAllowed accessDenied accessDialogOpened streamCreated");
         this.publisher.destroy();
         delete this.publisher;
       }
@@ -235,13 +238,30 @@ loop.OTSdkDriver = (function() {
      * https://tokbox.com/opentok/libraries/client/js/reference/StreamEvent.html
      */
     _onRemoteStreamCreated: function(event) {
-      this.publisherConfig.fitMode = "cover";
+      if (event.stream[STREAM_PROPERTIES.HAS_VIDEO]) {
+        this.dispatcher.dispatch(new sharedActions.VideoDimensionsChanged({
+          isLocal: false,
+          videoType: event.stream.videoType,
+          dimensions: event.stream[STREAM_PROPERTIES.VIDEO_DIMENSIONS]
+        }));
+      }
+
       this.session.subscribe(event.stream,
         this.getRemoteElement(), this.publisherConfig);
 
       this._subscribedRemoteStream = true;
       if (this._checkAllStreamsConnected()) {
         this.dispatcher.dispatch(new sharedActions.MediaConnected());
+      }
+    },
+
+    _onLocalStreamCreated: function(event) {
+      if (event.stream[STREAM_PROPERTIES.HAS_VIDEO]) {
+        this.dispatcher.dispatch(new sharedActions.VideoDimensionsChanged({
+          isLocal: true,
+          videoType: event.stream.videoType,
+          dimensions: event.stream[STREAM_PROPERTIES.VIDEO_DIMENSIONS]
+        }));
       }
     },
 
@@ -282,6 +302,19 @@ loop.OTSdkDriver = (function() {
       this.dispatcher.dispatch(new sharedActions.ConnectionFailure({
         reason: FAILURE_DETAILS.MEDIA_DENIED
       }));
+    },
+
+    /**
+     * Handles publishing of property changes to a stream.
+     */
+    _onStreamPropertyChanged: function(event) {
+      if (event.changedProperty == STREAM_PROPERTIES.VIDEO_DIMENSIONS) {
+        this.dispatcher.dispatch(new sharedActions.VideoDimensionsChanged({
+          isLocal: event.stream.connection.id == this.session.connection.id,
+          videoType: event.stream.videoType,
+          dimensions: event.stream[STREAM_PROPERTIES.VIDEO_DIMENSIONS]
+        }));
+      }
     },
 
     /**
