@@ -198,7 +198,7 @@ loop.roomViews = (function(mozL10n) {
             publishVideo: !this.state.videoMuted
           }),
           getLocalElementFunc: this._getElement.bind(this, ".local"),
-          getScreenShareElementFunc: this._getElement.bind(this, ".screen-share"),
+          getScreenShareElementFunc: this._getElement.bind(this, ".screen"),
           getRemoteElementFunc: this._getElement.bind(this, ".remote")
         }));
       }
@@ -285,7 +285,7 @@ loop.roomViews = (function(mozL10n) {
                       <div className="video_inner remote remote-stream"></div>
                     </div>
                     <div className={localStreamClasses}></div>
-                    <div className="screen-share hide"></div>
+                    <div className="screen hide"></div>
                   </div>
                   <sharedViews.ConversationToolbar
                     dispatcher={this.props.dispatcher}

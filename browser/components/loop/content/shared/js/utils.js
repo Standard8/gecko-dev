@@ -49,6 +49,12 @@ loop.shared.utils = (function(mozL10n) {
     ACTIVE: "ss-active"
   };
 
+  var STREAM_PROPERTIES = {
+    VIDEO_DIMENSIONS: "videoDimensions",
+    HAS_AUDIO: "hasAudio",
+    HAS_VIDEO: "hasVideo"
+  };
+
   /**
    * Format a given date into an l10n-friendly string.
    *
@@ -146,6 +152,7 @@ loop.shared.utils = (function(mozL10n) {
     REST_ERRNOS: REST_ERRNOS,
     WEBSOCKET_REASONS: WEBSOCKET_REASONS,
     SCREEN_SHARE_STATES: SCREEN_SHARE_STATES,
+    STREAM_PROPERTIES: STREAM_PROPERTIES,
     Helper: Helper,
     composeCallUrlEmail: composeCallUrlEmail,
     formatDate: formatDate,

@@ -198,7 +198,7 @@ loop.roomViews = (function(mozL10n) {
             publishVideo: !this.state.videoMuted
           }),
           getLocalElementFunc: this._getElement.bind(this, ".local"),
-          getScreenShareElementFunc: this._getElement.bind(this, ".screen-share"),
+          getScreenShareElementFunc: this._getElement.bind(this, ".screen"),
           getRemoteElementFunc: this._getElement.bind(this, ".remote")
         }));
       }
@@ -285,7 +285,7 @@ loop.roomViews = (function(mozL10n) {
                       React.createElement("div", {className: "video_inner remote remote-stream"})
                     ), 
                     React.createElement("div", {className: localStreamClasses}), 
-                    React.createElement("div", {className: "screen-share hide"})
+                    React.createElement("div", {className: "screen hide"})
                   ), 
                   React.createElement(sharedViews.ConversationToolbar, {
                     dispatcher: this.props.dispatcher, 

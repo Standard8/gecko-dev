@@ -72,7 +72,9 @@ loop.store.ActiveRoomStore = (function() {
         // anyone is not considered as 'used'
         used: false,
         screenSharingState: SCREEN_SHARE_STATES.INACTIVE,
-        receivingScreenShare: false
+        receivingScreenShare: false,
+        localVideoDimensions: {},
+        remoteVideoDimensions: {}
       };
     },
 
@@ -125,7 +127,8 @@ loop.store.ActiveRoomStore = (function() {
         "remotePeerConnected",
         "windowUnload",
         "leaveRoom",
-        "feedbackComplete"
+        "feedbackComplete",
+        "videoDimensionsChanged"
       ]);
     },
 
@@ -497,6 +500,17 @@ loop.store.ActiveRoomStore = (function() {
       // Note, that we want some values, such as the windowId, so we don't
       // do a full reset here.
       this.setStoreState(this.getInitialStoreState());
+    },
+
+    videoDimensionsChanged: function(actionData) {
+      // NOTE: in the future, when multiple remote video streams are supported,
+      //       we'll need to make this support multiple remotes as well. Good
+      //       starting point for video tiling.
+      var storeProp = (actionData.isLocal ? "local" : "remote") + "VideoDimensions";
+      var nextState = {};
+      nextState[storeProp] = this._storeState[storeProp];
+      nextState[storeProp][actionData.videoType] = actionData.dimensions;
+      this.setStoreState(nextState);
     }
   });
 
