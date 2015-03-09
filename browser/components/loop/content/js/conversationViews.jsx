@@ -745,6 +745,7 @@ loop.conversationViews = (function(mozL10n) {
       contact: React.PropTypes.object.isRequired,
       // This is used by the UI showcase.
       emailLinkError: React.PropTypes.bool,
+      outgoing: React.PropTypes.bool.isRequired
     },
 
     getInitialState: function() {
@@ -827,11 +828,29 @@ loop.conversationViews = (function(mozL10n) {
     },
 
     render: function() {
+      var retryClasses = React.addons.classSet({
+        btn: true,
+        "btn-info": true,
+        "btn-retry": true,
+        hide: !this.props.outgoing
+      });
+      var emailClasses = React.addons.classSet({
+        btn: true,
+        "btn-info": true,
+        "btn-email": true,
+        hide: !this.props.outgoing
+      });
+
+      var subMessage = "";
+      if (this.props.outgoing) {
+        subMessage = mozL10n.get("generic_failure_with_reason2");
+      }
+
       return (
         <div className="call-window">
           <h2>{ this._getTitleMessage() }</h2>
 
-          <p className="btn-label">{mozL10n.get("generic_failure_with_reason2")}</p>
+          <p className="btn-label">{subMessage}</p>
 
           {this._renderError()}
 
@@ -840,11 +859,11 @@ loop.conversationViews = (function(mozL10n) {
                     onClick={this.cancelCall}>
               {mozL10n.get("cancel_button")}
             </button>
-            <button className="btn btn-info btn-retry"
+            <button className={retryClasses}
                     onClick={this.retryCall}>
               {mozL10n.get("retry_call_button")}
             </button>
-            <button className="btn btn-info btn-email"
+            <button className={emailClasses}
                     onClick={this.emailLink}
                     disabled={this.state.emailLinkButtonDisabled}>
               {mozL10n.get("share_button2")}
@@ -1018,6 +1037,7 @@ loop.conversationViews = (function(mozL10n) {
           return (<CallFailedView
             dispatcher={this.props.dispatcher}
             contact={this.state.contact}
+            outgoing={this.state.outgoing}
           />);
         }
         case CALL_STATES.ONGOING: {
