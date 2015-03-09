@@ -420,11 +420,18 @@ loop.store = loop.store || {};
     },
 
     /**
-     * Called when the window is unloaded, either by code, or by the user
+     * Called with the window is unloaded, either by code, or by the user
      * explicitly closing it.  Expected to do any necessary housekeeping, such
-     * as shutting down the call cleanly and adding any relevant telemetry data.
+     * as shutting down the call cleanly and adding any relevant telemtry data.
      */
     windowUnload: function() {
+      // XXX Send decline on websocket?
+      if (!this.getStoreState("outgoing") &&
+          this.getStoreState("callState") === CALL_STATES.ALERTING &&
+          this._websocket) {
+        this._websocket.decline();
+      }
+
       this._endSession();
     },
 
